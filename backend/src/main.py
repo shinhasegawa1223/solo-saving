@@ -1,7 +1,7 @@
+import asyncpg
 from fastapi import FastAPI
 from pydantic_settings import BaseSettings
-import asyncpg
-import os
+
 
 class Settings(BaseSettings):
     POSTGRES_USER: str = "postgres"
@@ -10,13 +10,16 @@ class Settings(BaseSettings):
     POSTGRES_HOST: str = "db"
     POSTGRES_PORT: int = 5432
 
+
 settings = Settings()
 
 app = FastAPI()
 
+
 @app.get("/")
 async def root():
     return {"message": "Hello from FastAPI"}
+
 
 @app.get("/health")
 async def health():

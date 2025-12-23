@@ -427,4 +427,3 @@ DB: Postgres
 | Pythonリンター | **Ruff** | - | - |
 
 ---
-

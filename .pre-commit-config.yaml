@@ -8,10 +8,10 @@ repos:
       - id: check-added-large-files
 
   - repo: https://github.com/biomejs/pre-commit
-    rev: "v1.9.4" # Use the latest stable version compatible with your project
+    rev: "v0.6.1" # v0.6.1 is compatible with Biome v2+
     hooks:
       - id: biome-check
-        additional_dependencies: ["@biomejs/biome@1.9.4"]
+        additional_dependencies: ["@biomejs/biome@2.3.10"]
         files: ^frontend/
 
   - repo: https://github.com/astral-sh/ruff-pre-commit

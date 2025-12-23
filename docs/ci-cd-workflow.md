@@ -10,15 +10,15 @@ graph TD
     User[開発者] -->|git commit| PreCommit[pre-commit (Local)]
     PreCommit -->|Pass| Commit[コミット完了]
     PreCommit -->|Fail| Fix[修正して再コミット]
-    
+
     Commit -->|git push| GitHub[GitHub Repository]
     GitHub -->|Push/PR to main| Actions[GitHub Actions (CI)]
-    
+
     subgraph Local [ローカル環境]
         PreCommit -- フロントエンド --> BiomeCheck[Biome Check & Write]
         PreCommit -- バックエンド --> RuffCheck[Ruff Check & Format]
     end
-    
+
     subgraph CI [GitHub Actions]
         Actions -- フロントエンド --> FE_CI[Build & Lint]
         Actions -- バックエンド --> BE_CI[Lint & Format Check]
