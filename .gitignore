@@ -1,0 +1,53 @@
+# General
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+*.env
+
+# Python / FastAPI (Backend)
+backend/__pycache__/
+backend/*.py[cod]
+backend/*$py.class
+backend/.venv/
+backend/venv/
+backend/env/
+backend/.pytest_cache/
+backend/.ruff_cache/
+backend/htmlcov/
+backend/.coverage
+backend/uv.lock
+
+# Node / Next.js (Frontend)
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/build/
+frontend/dist/
+frontend/coverage/
+frontend/.turbo/
+frontend/bun.lock
+# bun.lockb is binary and usually committed, but bun.lock (text) might be preferred depending on version. 
+# Keeping bun.lockb in tracking is standard for Bun, but I will exclude it if user didn't specify, 
+# actually bun docs say commit bun.lockb. 
+# However, user uses bun, so let's keep bun.lockb if it exists, but ignore generated text lock if redundant?
+# Actually standard is:
+# users often commit bun.lockb.
+# I will only ignore node_modules and builds.
+
+# Docker
+docker-compose.override.yml
+
+# Agent / Tools
+.gemini/
