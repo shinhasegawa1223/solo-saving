@@ -1,13 +1,47 @@
 @import "tailwindcss";
 
+/* Enable class-based dark mode for Tailwind v4 */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Premium Color Palette */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Main Color - Navy (紺) - 60% */
+  --color-primary: #1e3a5f;
+  --color-primary-light: #2d4a7c;
+  --color-primary-dark: #152a47;
+
+  /* Sub Color 1 - Gold (金) - 30% */
+  --color-accent: #c9a227;
+  --color-accent-light: #dab842;
+  --color-accent-dark: #a8871e;
+
+  /* Neutral Colors */
+  --color-neutral-50: #f8fafc;
+  --color-neutral-100: #f1f5f9;
+  --color-neutral-200: #e2e8f0;
+  --color-neutral-300: #cbd5e1;
+  --color-neutral-400: #94a3b8;
+  --color-neutral-500: #64748b;
+  --color-neutral-600: #475569;
+  --color-neutral-700: #334155;
+  --color-neutral-800: #1e293b;
+  --color-neutral-900: #0f172a;
+
+  /* Theme Variables - Light Mode */
+  --background: #f8fafc;
+  --foreground: #1e293b;
+  --card-bg: #ffffff;
+  --card-border: #e2e8f0;
+  --card-shadow: rgba(30, 58, 95, 0.08);
 }
 
 .dark {
-  --background: #0a0a0a;
-  --foreground: #ededed;
+  /* Dark Mode - Sophisticatedなダークテーマ */
+  --background: #0f172a;
+  --foreground: #f1f5f9;
+  --card-bg: #1e293b;
+  --card-border: #334155;
+  --card-shadow: rgba(0, 0, 0, 0.3);
 }
 
 @theme inline {
@@ -20,5 +54,157 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Glassmorphism Card */
+.glass-card {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.dark .glass-card {
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(51, 65, 85, 0.5);
+}
+
+/* Premium gradient backgrounds */
+.gradient-primary {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+}
+
+.gradient-accent {
+  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-light) 100%);
+}
+
+.gradient-dark {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+}
+
+/* Hover animations */
+.card-hover {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px var(--card-shadow);
+}
+
+/* Chart customizations for Tremor */
+:root {
+  /* Tremor custom colors */
+  --tremor-content-subtle: #64748b;
+  --tremor-content-default: #334155;
+  --tremor-content-emphasis: #1e293b;
+  --tremor-background-muted: #f8fafc;
+  --tremor-border-default: #e2e8f0;
+}
+
+.dark {
+  --tremor-content-subtle: #94a3b8;
+  --tremor-content-default: #e2e8f0;
+  --tremor-content-emphasis: #f8fafc;
+  --tremor-background-muted: #1e293b;
+  --tremor-border-default: #475569;
+}
+
+/* Custom utility classes for the premium palette */
+.bg-primary {
+  background-color: var(--color-primary);
+}
+
+.text-primary {
+  color: var(--color-primary);
+}
+
+.bg-accent {
+  background-color: var(--color-accent);
+}
+
+.text-accent {
+  color: var(--color-accent);
+}
+
+.border-accent {
+  border-color: var(--color-accent);
+}
+
+/* Smooth scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-neutral-100);
+  border-radius: 4px;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: var(--color-neutral-800);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-neutral-400);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-neutral-500);
+}
+
+/* Chart area improvements */
+.tremor-Area-root {
+  padding: 0.5rem;
+}
+
+/* Ensure text doesn't get cut off */
+.chart-container {
+  overflow: visible;
+  padding-left: 1rem;
+  padding-right: 0.75rem;
+}
+
+/* Tremor Chart axis text styling */
+[class*="recharts-cartesian-axis-tick-value"] tspan,
+[class*="recharts-cartesian-axis-tick"] text {
+  font-size: 11px !important;
+}
+
+/* Dark mode: White text for chart axis */
+.dark [class*="recharts-cartesian-axis-tick-value"] tspan,
+.dark [class*="recharts-cartesian-axis-tick"] text,
+.dark [class*="recharts-text"] tspan,
+.dark .recharts-cartesian-axis-tick text {
+  fill: #f1f5f9 !important;
+  color: #f1f5f9 !important;
+}
+
+.dark [class*="recharts-cartesian-grid"] line {
+  stroke: #334155 !important;
+}
+
+/* Y-axis label alignment and spacing */
+[class*="recharts-yAxis"] {
+  transform: translateX(-4px);
+}
+
+/* Tremor tooltip styling - solid background */
+[class*="tremor-Tooltip"],
+.recharts-tooltip-wrapper [class*="tremor"] {
+  background-color: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
+  border-radius: 8px !important;
+  backdrop-filter: none !important;
+}
+
+.dark [class*="tremor-Tooltip"],
+.dark .recharts-tooltip-wrapper [class*="tremor"] {
+  background-color: #1e293b !important;
+  border: 1px solid #475569 !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4) !important;
 }
