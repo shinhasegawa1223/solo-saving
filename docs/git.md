@@ -1,7 +1,7 @@
-# Git運用ルール (Git-Flow)
+# Git運用ルール (GitHub Flow)
 
-本プロジェクトでは **Git-Flow** をブランチ戦略として採用します。
-全ての開発者はこのフローに従ってブランチを作成・マージしてください。
+本プロジェクトでは **GitHub Flow** をベースとしたシンプルなブランチ戦略を採用します。
+`main` ブランチと `feature` ブランチのみを使用し、スピーディーな開発とデプロイを目指します。
 
 ---
 
@@ -9,11 +9,10 @@
 
 | ブランチ名 | ベース | マージ先 | 役割・用途 |
 | :--- | :--- | :--- | :--- |
-| **main** | - | - | **【本番環境】** 常に商用リリース可能な安定版。直接コミット禁止。 |
-| **develop** | main | main | **【開発の主軸】** 次期リリースのための最新開発コードが集約されるブランチ。 |
-| **feature/*** | develop | develop | **【機能開発】** 新機能の開発やバグ修正を行う作業用ブランチ。 |
-| **release/*** | develop | main & develop | **【リリース準備】** リリース前の最終確認、バージョン番号の更新などを行う。 |
-| **hotfix/*** | main | main & develop | **【緊急修正】** 本番環境で見つかったクリティカルなバグの緊急修正用。 |
+| **main** | - | - | **【本番そのもの】** 常にデプロイ可能で安定した状態を保つブランチ。直接コミット禁止。 |
+| **feature/*** | main | main | **【機能開発】** 新機能の開発やバグ修正を行う作業用ブランチ。 |
+
+※ `develop`, `release`, `hotfix` 等のブランチは原則使用しません。
 
 ---
 
@@ -22,74 +21,44 @@
 ```mermaid
 gitGraph
     commit tag: "v1.0.0"
-    branch develop
-    checkout develop
-    commit
-
-    %% 機能開発 A
     branch feature/user-auth
     checkout feature/user-auth
     commit
     commit
-    checkout develop
+    checkout main
     merge feature/user-auth
 
-    %% 機能開発 B
     branch feature/payment-api
     checkout feature/payment-api
     commit
-    checkout develop
-    merge feature/payment-api
-
-    %% リリース準備
-    branch release/v1.1.0
-    checkout release/v1.1.0
-    commit id: "Bump version"
-
-    %% リリース完了 (mainへマージ)
     checkout main
-    merge release/v1.1.0 tag: "v1.1.0"
+    merge feature/payment-api tag: "v1.1.0"
 
-    %% developへも反映
-    checkout develop
-    merge release/v1.1.0
-
-    %% 緊急修正 (Hotfix)
-    checkout main
-    branch hotfix/login-error
-    checkout hotfix/login-error
+    branch fix/login-bug
+    checkout fix/login-bug
     commit
     checkout main
-    merge hotfix/login-error tag: "v1.1.1"
-    checkout develop
-    merge hotfix/login-error
+    merge fix/login-bug tag: "v1.1.1"
 ```
 
 ---
 
 ## 3. 開発フロー詳細
 
-### ① 機能開発 (Feature Branch)
-1. `develop` ブランチから作成する (命名: `feature/機能名`)
-2. 作業完了後、`develop` ブランチへ Pull Request (PR) を作成
-3. コードレビュー承認後、`develop` へマージ
+### 機能開発・バグ修正 (Feature/Fix Branch)
+1. `main` ブランチから作成する (命名: `feature/機能名` または `fix/バグ名`)
+2. 作業完了後、`main` ブランチへ Pull Request (PR) を作成
+3. CI (`[Front] CI` / `[Back] CI`) が通っていることを確認
+4. コードレビュー承認後、`main` へマージ（マージ時はSquash Merge推奨）
 
 ```bash
-git checkout develop
-git pull origin develop
-git checkout -b feature/my-new-feature
+git checkout main
+git pull origin main
+git checkout -b feature/new-feature
 # 作業 & コミット
-git push origin feature/my-new-feature
+git push origin feature/new-feature
+# GitHub上でPR作成
 ```
-
-### ② リリース準備 (Release Branch)
-1. 開発が完了し、リリースフェーズに入ったら `develop` から作成 (命名: `release/vX.X.X`)
-2. バージョン番号の更新や最終テストを行う
-3. 完了後、`main` と `develop` の**両方**へマージする
-
-### ③ 緊急修正 (Hotfix Branch)
-1. 本番環境 (`main`) でバグが見つかった場合、`main` から作成 (命名: `hotfix/バグ名`)
-2. 修正後、`main` と `develop` の**両方**へマージする
 
 ---
 
