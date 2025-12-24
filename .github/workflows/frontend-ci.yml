@@ -1,7 +1,7 @@
 # フロントエンドCI - Next.js + Biome
 # フロントエンド関連ファイルが変更された場合のみ実行されます
 
-name: Frontend CI
+name: "[Front] CI"
 
 on:
   # mainブランチへのpush時に実行

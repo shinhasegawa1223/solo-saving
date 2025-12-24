@@ -1,7 +1,7 @@
 # バックエンドCI - FastAPI + Ruff
 # バックエンド関連ファイルが変更された場合のみ実行されます
 
-name: Backend CI
+name: "[Back] CI"
 
 on:
   # mainブランチへのpush時に実行
