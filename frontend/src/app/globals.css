@@ -55,7 +55,9 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: "Inter", system-ui, -apple-system, sans-serif;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
 }
 
 /* Glassmorphism Card */
@@ -72,11 +74,19 @@ body {
 
 /* Premium gradient backgrounds */
 .gradient-primary {
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--color-primary) 0%,
+    var(--color-primary-light) 100%
+  );
 }
 
 .gradient-accent {
-  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-light) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--color-accent) 0%,
+    var(--color-accent-light) 100%
+  );
 }
 
 .gradient-dark {
@@ -85,7 +95,9 @@ body {
 
 /* Hover animations */
 .card-hover {
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
 }
 
 .card-hover:hover {
@@ -168,6 +180,7 @@ body {
   padding-right: 0.75rem;
 }
 
+/* biome-ignore-start nursery/noImportantInKeyword: Necessary to override Tremor/Recharts styles */
 /* Tremor Chart axis text styling */
 [class*="recharts-cartesian-axis-tick-value"] tspan,
 [class*="recharts-cartesian-axis-tick"] text {
@@ -208,3 +221,5 @@ body {
   border: 1px solid #475569 !important;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4) !important;
 }
+
+/* biome-ignore-end nursery/noImportantInKeyword */
