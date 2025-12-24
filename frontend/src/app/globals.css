@@ -74,19 +74,15 @@ body {
 
 /* Premium gradient backgrounds */
 .gradient-primary {
-  background: linear-gradient(
-    135deg,
-    var(--color-primary) 0%,
-    var(--color-primary-light) 100%
-  );
+  background: linear-gradient(135deg,
+      var(--color-primary) 0%,
+      var(--color-primary-light) 100%);
 }
 
 .gradient-accent {
-  background: linear-gradient(
-    135deg,
-    var(--color-accent) 0%,
-    var(--color-accent-light) 100%
-  );
+  background: linear-gradient(135deg,
+      var(--color-accent) 0%,
+      var(--color-accent-light) 100%);
 }
 
 .gradient-dark {
@@ -180,24 +176,24 @@ body {
   padding-right: 0.75rem;
 }
 
-/* biome-ignore-start nursery/noImportantInKeyword: Necessary to override Tremor/Recharts styles */
+/* biome-ignore-start lint: Necessary to override Tremor/Recharts styles */
 /* Tremor Chart axis text styling */
-[class*="recharts-cartesian-axis-tick-value"] tspan,
-[class*="recharts-cartesian-axis-tick"] text {
-  font-size: 11px !important;
+body [class*="recharts-cartesian-axis-tick-value"] tspan,
+body [class*="recharts-cartesian-axis-tick"] text {
+  font-size: 11px;
 }
 
 /* Dark mode: White text for chart axis */
-.dark [class*="recharts-cartesian-axis-tick-value"] tspan,
-.dark [class*="recharts-cartesian-axis-tick"] text,
-.dark [class*="recharts-text"] tspan,
+.dark body [class*="recharts-cartesian-axis-tick-value"] tspan,
+.dark body [class*="recharts-cartesian-axis-tick"] text,
+.dark body [class*="recharts-text"] tspan,
 .dark .recharts-cartesian-axis-tick text {
-  fill: #f1f5f9 !important;
-  color: #f1f5f9 !important;
+  fill: #f1f5f9;
+  color: #f1f5f9;
 }
 
-.dark [class*="recharts-cartesian-grid"] line {
-  stroke: #334155 !important;
+.dark body [class*="recharts-cartesian-grid"] line {
+  stroke: #334155;
 }
 
 /* Y-axis label alignment and spacing */
@@ -206,20 +202,22 @@ body {
 }
 
 /* Tremor tooltip styling - solid background */
-[class*="tremor-Tooltip"],
-.recharts-tooltip-wrapper [class*="tremor"] {
-  background-color: #ffffff !important;
-  border: 1px solid #e2e8f0 !important;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
-  border-radius: 8px !important;
-  backdrop-filter: none !important;
+body [class*="tremor-Tooltip"],
+body .recharts-tooltip-wrapper [class*="tremor"] {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  backdrop-filter: none;
 }
 
-.dark [class*="tremor-Tooltip"],
-.dark .recharts-tooltip-wrapper [class*="tremor"] {
-  background-color: #1e293b !important;
-  border: 1px solid #475569 !important;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4) !important;
+
+
+.dark body [class*="tremor-Tooltip"],
+.dark body .recharts-tooltip-wrapper [class*="tremor"] {
+  background-color: #1e293b;
+  border: 1px solid #475569;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
 }
 
-/* biome-ignore-end nursery/noImportantInKeyword */
+/* biome-ignore-end lint */
