@@ -12,7 +12,7 @@ graph TD
     PreCommit -->|Fail| Fix[修正して再コミット]
 
     Commit -->|git push| GitHub[GitHub Repository]
-    GitHub -->|Push/PR to main| Actions["GitHub Actions (CI)"]
+    GitHub -->|Push/PR to main| Actions["GitHub Actions (CI) トリガー"]
 
     subgraph Local [ローカル環境]
         PreCommit -- フロントエンド --> BiomeCheck["Biome Check & Write"]
@@ -20,8 +20,18 @@ graph TD
     end
 
     subgraph CI [GitHub Actions]
-        Actions -- フロントエンド --> FE_CI["Build & Lint"]
-        Actions -- バックエンド --> BE_CI["Lint & Format Check"]
+        Actions --> DiffCheck{"変更パスの検知<br>(Path Filters)"}
+
+        DiffCheck -- "frontend/**" --> FE_Workflow["Frontend Workflow"]
+        DiffCheck -- "backend/**" --> BE_Workflow["Backend Workflow"]
+        DiffCheck -- 両方変更 --> Both["並列実行"]
+        DiffCheck -- その他 --> Skip[スキップ]
+
+        FE_Workflow --> FE_Steps["Setup Bun <br> Install Dependencies <br> Biome Check <br> Build"]
+        BE_Workflow --> BE_Steps["Setup uv <br> Install Dependencies <br> Ruff Check <br> Ruff Format"]
+
+        Both --> FE_Workflow
+        Both --> BE_Workflow
     end
 ```
 
