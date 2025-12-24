@@ -74,15 +74,19 @@ body {
 
 /* Premium gradient backgrounds */
 .gradient-primary {
-  background: linear-gradient(135deg,
-      var(--color-primary) 0%,
-      var(--color-primary-light) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--color-primary) 0%,
+    var(--color-primary-light) 100%
+  );
 }
 
 .gradient-accent {
-  background: linear-gradient(135deg,
-      var(--color-accent) 0%,
-      var(--color-accent-light) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--color-accent) 0%,
+    var(--color-accent-light) 100%
+  );
 }
 
 .gradient-dark {
@@ -211,8 +215,6 @@ body .recharts-tooltip-wrapper [class*="tremor"] {
   backdrop-filter: none;
 }
 
-
-
 .dark body [class*="tremor-Tooltip"],
 .dark body .recharts-tooltip-wrapper [class*="tremor"] {
   background-color: #1e293b;
@@ -220,4 +222,4 @@ body .recharts-tooltip-wrapper [class*="tremor"] {
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
 }
 
-/* biome-ignore-end lint */
+/* biome-ignore-end lint: Necessary to override Tremor/Recharts styles */
