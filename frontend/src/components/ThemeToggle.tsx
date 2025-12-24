@@ -15,7 +15,7 @@ export function ThemeToggle() {
     return (
       <button
         type="button"
-        className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 w-10 h-10"
+        className="p-2 rounded-lg bg-[#223670] w-10 h-10"
         aria-label="Toggle theme"
       />
     );
@@ -27,7 +27,7 @@ export function ThemeToggle() {
     <button
       type="button"
       onClick={() => setTheme(isDark ? "light" : "dark")}
-      className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+      className="p-2 rounded-lg bg-[#223670] hover:bg-[#2d4590] text-white transition-colors shadow-md"
       aria-label="Toggle theme"
     >
       {isDark ? (
@@ -37,7 +37,7 @@ export function ThemeToggle() {
           viewBox="0 0 24 24"
           strokeWidth={1.5}
           stroke="currentColor"
-          className="w-6 h-6 text-yellow-400"
+          className="w-6 h-6 text-[#D0A900]"
           aria-hidden="true"
         >
           <title>Light mode</title>
@@ -54,7 +54,7 @@ export function ThemeToggle() {
           viewBox="0 0 24 24"
           strokeWidth={1.5}
           stroke="currentColor"
-          className="w-6 h-6 text-gray-700"
+          className="w-6 h-6 text-white"
           aria-hidden="true"
         >
           <title>Dark mode</title>
