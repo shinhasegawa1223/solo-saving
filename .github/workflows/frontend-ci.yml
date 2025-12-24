@@ -1,0 +1,53 @@
+# フロントエンドCI - Next.js + Biome
+# フロントエンド関連ファイルが変更された場合のみ実行されます
+
+name: Frontend CI
+
+on:
+  # mainブランチへのpush時に実行
+  push:
+    branches: ["main"]
+    # 以下のパスに変更があった場合のみトリガー
+    paths:
+      - "frontend/**"              # フロントエンドコード
+      - "biome.json"               # Biome設定ファイル
+      - ".github/workflows/frontend-ci.yml"  # このワークフロー自体
+
+  # Pull Request時にも実行
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "frontend/**"
+      - "biome.json"
+      - ".github/workflows/frontend-ci.yml"
+
+jobs:
+  frontend-ci:
+    name: Frontend CI (Next.js + Biome)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+
+    steps:
+      # リポジトリのチェックアウト
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Bunのセットアップ（高速なJavaScriptランタイム）
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      # 依存関係のインストール
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # Biomeによるリント・フォーマットチェック
+      - name: Lint and Format Check (Biome)
+        run: bun run biome ci .
+
+      # Next.jsアプリケーションのビルド
+      - name: Build
+        run: bun run build

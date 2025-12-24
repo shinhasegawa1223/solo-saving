@@ -1,0 +1,53 @@
+# バックエンドCI - FastAPI + Ruff
+# バックエンド関連ファイルが変更された場合のみ実行されます
+
+name: Backend CI
+
+on:
+  # mainブランチへのpush時に実行
+  push:
+    branches: ["main"]
+    # 以下のパスに変更があった場合のみトリガー
+    paths:
+      - "backend/**"                # バックエンドコード
+      - ".github/workflows/backend-ci.yml"  # このワークフロー自体
+
+  # Pull Request時にも実行
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-ci.yml"
+
+jobs:
+  backend-ci:
+    name: Backend CI (FastAPI + Ruff)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+
+    steps:
+      # リポジトリのチェックアウト
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # uvのインストール（高速なPythonパッケージマネージャー）
+      - name: Install uv
+        uses: astral-sh/setup-uv@v2
+
+      # Python 3.12のセットアップ
+      - name: Set up Python
+        run: uv python install 3.12
+
+      # 依存関係のインストール（uv.lockから同期）
+      - name: Install dependencies
+        run: uv sync
+
+      # Ruffによるコードリント
+      - name: Lint (Ruff)
+        run: uv run ruff check .
+
+      # Ruffによるフォーマットチェック
+      - name: Format Check (Ruff)
+        run: uv run ruff format --check .
