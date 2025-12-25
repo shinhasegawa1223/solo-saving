@@ -1,32 +1,27 @@
-import asyncpg
 from fastapi import FastAPI
-from pydantic_settings import BaseSettings
+from fastapi.middleware.cors import CORSMiddleware
 
+app = FastAPI(
+    title="Solo Saving API",
+    description="Personal finance management API",
+    version="0.1.0",
+)
 
-class Settings(BaseSettings):
-    POSTGRES_USER: str = "postgres"
-    POSTGRES_PASSWORD: str = "postgres"
-    POSTGRES_DB: str = "appdb"
-    POSTGRES_HOST: str = "db"
-    POSTGRES_PORT: int = 5432
-
-
-settings = Settings()
-
-app = FastAPI()
+# CORS設定
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/")
 async def root():
-    return {"message": "Hello from FastAPI"}
+    return {"message": "Solo Saving API is running"}
 
 
 @app.get("/health")
 async def health():
-    dsn = f"postgresql://{settings.POSTGRES_USER}:{settings.POSTGRES_PASSWORD}@{settings.POSTGRES_HOST}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}"
-    try:
-        conn = await asyncpg.connect(dsn)
-        await conn.close()
-        return {"status": "ok", "db": "connected"}
-    except Exception as e:
-        return {"status": "error", "db": str(e)}
+    return {"status": "ok"}

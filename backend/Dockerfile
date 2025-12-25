@@ -10,10 +10,10 @@ ENV UV_COMPILE_BYTECODE=1
 ENV UV_LINK_MODE=copy
 
 # lockファイルと設定を使用してプロジェクトの依存関係をインストールする
+# lockファイルと設定を使用してプロジェクトの依存関係をインストールする
+COPY pyproject.toml .
 RUN --mount=type=cache,target=/root/.cache/uv \
-    --mount=type=bind,source=uv.lock,target=uv.lock \
-    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --frozen --no-install-project --no-dev
+    uv sync --no-install-project --no-dev
 
 # 実行可能ファイルをPATHの前方に追加する
 ENV UV_PROJECT_ENVIRONMENT="/opt/venv"
@@ -27,6 +27,6 @@ COPY . .
 
 # プロジェクトをインストールする
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev
+    uv sync --no-dev
 
 CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
