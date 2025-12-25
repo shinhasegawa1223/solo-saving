@@ -5,7 +5,7 @@ Docker を使用して環境構築されているため、ローカルに `bun` 
 
 ## 🛠 技術スタック
 
-- **Frontend**: Next.js (App Router), Bun, Biome, Tailwind CSS
+- **Frontend**: Next.js (App Router), Bun, Biome, Tailwind CSS, Recharts
 - **Backend**: FastAPI, uv (Package Manager), Ruff (Linter/Formatter)
 - **Database**: PostgreSQL
 - **Tools**: Docker Compose, pgAdmin4
