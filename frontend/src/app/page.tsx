@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { AreaChart } from "@/components/AreaChart";
+import { DonutChart } from "@/components/DonutChart";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 // 月次データ
@@ -472,6 +473,140 @@ export default function Home() {
               showLegend={false}
               yAxisWidth={70}
             />
+          </div>
+        </section>
+
+        {/* ポートフォリオ構成（円グラフ） */}
+        <section className="p-8 rounded-2xl bg-white dark:bg-[#1e293b] border border-[#e2e8f0] dark:border-[#334155] shadow-lg">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-1.5 h-8 rounded-full bg-gradient-to-b from-[#6366f1] to-[#8b5cf6]" />
+            <div>
+              <h2 className="text-xl font-bold text-[#1e293b] dark:text-white">
+                ポートフォリオ構成
+              </h2>
+              <p className="text-sm text-[#64748b] dark:text-[#94a3b8]">
+                資産カテゴリ別の配分比率
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col lg:flex-row items-center gap-8">
+            {/* 円グラフ */}
+            <div className="w-full lg:w-1/2 h-80">
+              <DonutChart
+                data={[
+                  { name: "日本株", value: 1350000 },
+                  { name: "米国株", value: 1600000 },
+                  { name: "投資信託", value: 1050000 },
+                  { name: "現金", value: 610000 },
+                ]}
+                colors={["indigo", "amber", "emerald", "slate"]}
+                valueFormatter={(value: number) => `¥${value.toLocaleString()}`}
+                variant="donut"
+                label="¥4,610,000"
+              />
+            </div>
+
+            {/* 詳細情報 */}
+            <div className="w-full lg:w-1/2 space-y-4">
+              <div className="p-4 rounded-xl bg-gradient-to-r from-indigo-500/10 to-indigo-500/5 border border-indigo-500/20">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-indigo-500 flex items-center justify-center">
+                      <span className="text-white text-lg">🇯🇵</span>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-[#1e293b] dark:text-white">
+                        日本株
+                      </p>
+                      <p className="text-sm text-[#64748b] dark:text-[#94a3b8]">
+                        国内株式
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-[#1e293b] dark:text-white">
+                      ¥1,350,000
+                    </p>
+                    <p className="text-sm text-indigo-500 font-medium">29.3%</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-xl bg-gradient-to-r from-amber-500/10 to-amber-500/5 border border-amber-500/20">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-amber-500 flex items-center justify-center">
+                      <span className="text-white text-lg">🇺🇸</span>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-[#1e293b] dark:text-white">
+                        米国株
+                      </p>
+                      <p className="text-sm text-[#64748b] dark:text-[#94a3b8]">
+                        米国株式
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-[#1e293b] dark:text-white">
+                      ¥1,600,000
+                    </p>
+                    <p className="text-sm text-amber-500 font-medium">34.7%</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-500/10 to-emerald-500/5 border border-emerald-500/20">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-emerald-500 flex items-center justify-center">
+                      <span className="text-white text-lg">📊</span>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-[#1e293b] dark:text-white">
+                        投資信託
+                      </p>
+                      <p className="text-sm text-[#64748b] dark:text-[#94a3b8]">
+                        ファンド
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-[#1e293b] dark:text-white">
+                      ¥1,050,000
+                    </p>
+                    <p className="text-sm text-emerald-500 font-medium">
+                      22.8%
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-xl bg-gradient-to-r from-slate-500/10 to-slate-500/5 border border-slate-500/20">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-slate-500 flex items-center justify-center">
+                      <span className="text-white text-lg">💵</span>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-[#1e293b] dark:text-white">
+                        現金
+                      </p>
+                      <p className="text-sm text-[#64748b] dark:text-[#94a3b8]">
+                        預金・現金
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-[#1e293b] dark:text-white">
+                      ¥610,000
+                    </p>
+                    <p className="text-sm text-slate-500 font-medium">13.2%</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
       </main>

@@ -74,19 +74,15 @@ body {
 
 /* Premium gradient backgrounds */
 .gradient-primary {
-  background: linear-gradient(
-    135deg,
-    var(--color-primary) 0%,
-    var(--color-primary-light) 100%
-  );
+  background: linear-gradient(135deg,
+      var(--color-primary) 0%,
+      var(--color-primary-light) 100%);
 }
 
 .gradient-accent {
-  background: linear-gradient(
-    135deg,
-    var(--color-accent) 0%,
-    var(--color-accent-light) 100%
-  );
+  background: linear-gradient(135deg,
+      var(--color-accent) 0%,
+      var(--color-accent-light) 100%);
 }
 
 .gradient-dark {
@@ -113,6 +109,13 @@ body {
   --tremor-content-emphasis: #1e293b;
   --tremor-background-muted: #f8fafc;
   --tremor-border-default: #e2e8f0;
+
+  /* Tremor Chart Colors - same as categoryConfig */
+  --tremor-indigo: #6366f1;
+  --tremor-amber: #f59e0b;
+  --tremor-emerald: #10b981;
+  --tremor-slate: #64748b;
+  --tremor-cyan: #06b6d4;
 }
 
 .dark {
@@ -223,3 +226,59 @@ body .recharts-tooltip-wrapper [class*="tremor"] {
 }
 
 /* biome-ignore-end lint: Necessary to override Tremor/Recharts styles */
+
+/* Donut Chart Color Overrides for Tremor */
+.recharts-pie-sector path[class*="fill-indigo"],
+.recharts-sector[class*="fill-indigo"] {
+  fill: #6366f1 !important;
+}
+
+.recharts-pie-sector path[class*="fill-amber"],
+.recharts-sector[class*="fill-amber"] {
+  fill: #f59e0b !important;
+}
+
+.recharts-pie-sector path[class*="fill-emerald"],
+.recharts-sector[class*="fill-emerald"] {
+  fill: #10b981 !important;
+}
+
+.recharts-pie-sector path[class*="fill-slate"],
+.recharts-sector[class*="fill-slate"] {
+  fill: #64748b !important;
+}
+
+.recharts-pie-sector path[class*="fill-cyan"],
+.recharts-sector[class*="fill-cyan"] {
+  fill: #06b6d4 !important;
+}
+
+/* Tremor DonutChart specific color overrides */
+[data-testid="pie-cell-0"] {
+  fill: #6366f1 !important;
+}
+
+[data-testid="pie-cell-1"] {
+  fill: #f59e0b !important;
+}
+
+[data-testid="pie-cell-2"] {
+  fill: #10b981 !important;
+}
+
+[data-testid="pie-cell-3"] {
+  fill: #64748b !important;
+}
+
+/* DonutChart center label - dark mode white text */
+.dark .recharts-pie-label-text,
+.dark .tremor-DonutChart-label,
+.dark [class*="tremor-DonutChart"] text,
+.dark .recharts-text.recharts-pie-label-text tspan,
+html.dark .recharts-layer text,
+html.dark svg text[class*="tremor"],
+html.dark svg text[class*="fill-dark-tremor"],
+html.dark .recharts-pie text {
+  fill: #f1f5f9 !important;
+  color: #f1f5f9 !important;
+}
