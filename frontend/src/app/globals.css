@@ -74,15 +74,19 @@ body {
 
 /* Premium gradient backgrounds */
 .gradient-primary {
-  background: linear-gradient(135deg,
-      var(--color-primary) 0%,
-      var(--color-primary-light) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--color-primary) 0%,
+    var(--color-primary-light) 100%
+  );
 }
 
 .gradient-accent {
-  background: linear-gradient(135deg,
-      var(--color-accent) 0%,
-      var(--color-accent-light) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--color-accent) 0%,
+    var(--color-accent-light) 100%
+  );
 }
 
 .gradient-dark {
