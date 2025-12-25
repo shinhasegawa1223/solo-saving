@@ -74,15 +74,19 @@ body {
 
 /* Premium gradient backgrounds */
 .gradient-primary {
-  background: linear-gradient(135deg,
-      var(--color-primary) 0%,
-      var(--color-primary-light) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--color-primary) 0%,
+    var(--color-primary-light) 100%
+  );
 }
 
 .gradient-accent {
-  background: linear-gradient(135deg,
-      var(--color-accent) 0%,
-      var(--color-accent-light) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--color-accent) 0%,
+    var(--color-accent-light) 100%
+  );
 }
 
 .gradient-dark {
@@ -227,6 +231,7 @@ body .recharts-tooltip-wrapper [class*="tremor"] {
 
 /* biome-ignore-end lint: Necessary to override Tremor/Recharts styles */
 
+/* biome-ignore-start lint: Necessary to override Tremor/Recharts DonutChart styles */
 /* Donut Chart Color Overrides for Tremor */
 .recharts-pie-sector path[class*="fill-indigo"],
 .recharts-sector[class*="fill-indigo"] {
@@ -282,3 +287,5 @@ html.dark .recharts-pie text {
   fill: #f1f5f9 !important;
   color: #f1f5f9 !important;
 }
+
+/* biome-ignore-end lint: Necessary to override Tremor/Recharts DonutChart styles */
