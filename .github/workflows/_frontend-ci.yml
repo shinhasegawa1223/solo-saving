@@ -1,25 +1,10 @@
-# フロントエンドCI - Next.js + Biome
-# フロントエンド関連ファイルが変更された場合のみ実行されます
+# フロントエンドCI - Next.js + Biome (Reusable Workflow)
+# main.yml から呼び出される再利用可能なワークフロー
 
-name: "[Front] CI"
+name: "_Frontend CI"
 
 on:
-  # mainブランチへのpush時に実行
-  push:
-    branches: ["main"]
-    # 以下のパスに変更があった場合のみトリガー
-    paths:
-      - "frontend/**"              # フロントエンドコード
-      - "biome.json"               # Biome設定ファイル
-      - ".github/workflows/frontend-ci.yml"  # このワークフロー自体
-
-  # Pull Request時にも実行
-  pull_request:
-    branches: ["main"]
-    paths:
-      - "frontend/**"
-      - "biome.json"
-      - ".github/workflows/frontend-ci.yml"
+  workflow_call:
 
 jobs:
   frontend-ci:
