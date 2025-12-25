@@ -106,3 +106,66 @@ pre-commit install
 2. **Install**: `uv sync` で依存関係インストール
 3. **Lint**: `uv run ruff check .` で静的解析
 4. **Format**: `uv run ruff format --check .` でフォーマット崩れがないかチェック
+
+---
+
+## 設計判断: Matrix vs 個別ジョブ
+
+### 現在の実装（個別ジョブ方式）
+
+```yaml
+jobs:
+  frontend-ci:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.frontend == 'true'
+    uses: ./.github/workflows/_frontend-ci.yml
+
+  backend-ci:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.backend == 'true'
+    uses: ./.github/workflows/_backend-ci.yml
+```
+
+### Matrix方式との比較
+
+| 観点 | 個別ジョブ方式 ✅ | Matrix方式 |
+|------|-----------------|-----------|
+| **条件分岐** | 明確で読みやすい | 動的参照が複雑 |
+| **並列実行** | 変更があった場合のみ実行 | 両方スケジュールされる |
+| **可読性** | 一目で理解できる | ロジックが抽象化される |
+| **拡張性** | 新しいCIの追加が容易 | パラメータ化が必要 |
+| **保守性** | 各CIを独立して管理 | 共通化による制約 |
+
+### 採用理由
+
+> [!IMPORTANT]
+> **個別ジョブ方式を採用**
+>
+> フロントエンドとバックエンドの2つのCIであれば、個別ジョブ方式が最適です。
+> 以下の理由により、Matrix方式は採用しませんでした:
+
+1. **条件分岐の明確性**: `if`条件で変更検知の結果を直接参照できる
+2. **並列実行の効率性**: 変更がない場合はジョブ自体がスキップされる
+3. **可読性**: どのCIが実行されているか一目瞭然
+4. **柔軟性**: 将来的に各CIに異なるパラメータを渡しやすい
+
+### Matrix方式が有効なケース
+
+Matrix方式は以下のような場合に有効です:
+
+```yaml
+# 同じテストを複数環境で実行する場合
+strategy:
+  matrix:
+    node-version: [18, 20, 22]
+    os: [ubuntu-latest, macos-latest]
+```
+
+- 同じテストを複数のバージョン/環境で実行する場合
+- パラメータだけが異なる同一処理を繰り返す場合
+- マイクロサービスが多数存在する場合（5つ以上など）
+
+### 将来的な拡張
+
+もし将来的にマイクロサービスが増えた場合は、動的なワークフロー生成を検討する価値があります。
+しかし、現時点ではフロントエンドとバックエンドの2つなので、個別ジョブ方式が最適です。
