@@ -1,23 +1,10 @@
-# バックエンドCI - FastAPI + Ruff
-# バックエンド関連ファイルが変更された場合のみ実行されます
+# バックエンドCI - FastAPI + Ruff (Reusable Workflow)
+# main.yml から呼び出される再利用可能なワークフロー
 
-name: "[Back] CI"
+name: "_Backend CI"
 
 on:
-  # mainブランチへのpush時に実行
-  push:
-    branches: ["main"]
-    # 以下のパスに変更があった場合のみトリガー
-    paths:
-      - "backend/**"                # バックエンドコード
-      - ".github/workflows/backend-ci.yml"  # このワークフロー自体
-
-  # Pull Request時にも実行
-  pull_request:
-    branches: ["main"]
-    paths:
-      - "backend/**"
-      - ".github/workflows/backend-ci.yml"
+  workflow_call:
 
 jobs:
   backend-ci:
