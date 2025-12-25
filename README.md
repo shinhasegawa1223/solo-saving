@@ -3,6 +3,12 @@
 Next.js (Frontend) + FastAPI (Backend) + PostgreSQL (Database) の完全な開発環境です。
 Docker を使用して環境構築されているため、ローカルに `bun` や `uv` がインストールされていなくても動作します。
 
+## 📸 Screenshots
+
+| Dark Mode | Light Mode |
+| --- | --- |
+| ![Dark Mode](images/dark.png) | ![Light Mode](images/white.png) |
+
 ## 🛠 技術スタック
 
 - **Frontend**: Next.js (App Router), Bun, Biome, Tailwind CSS, Recharts
