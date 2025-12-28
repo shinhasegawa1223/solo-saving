@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ProgressBar } from "@/components/ProgressBar";
 import { appConfig } from "@/config";
+import { formatCurrency, formatShortCurrency } from "@/lib/formatters";
 
 interface ProgressBarHeroProps {
   targetAmount?: number;
@@ -22,24 +23,6 @@ export const ProgressBarHero = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editTarget, setEditTarget] = useState(target.toString());
   const [editCurrent, setEditCurrent] = useState(current.toString());
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("ja-JP", {
-      style: "currency",
-      currency: "JPY",
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
-
-  const formatShortCurrency = (value: number) => {
-    if (value >= 100000000) {
-      return `${(value / 100000000).toFixed(1)}億円`;
-    }
-    if (value >= 10000) {
-      return `${Math.floor(value / 10000)}万円`;
-    }
-    return `${value}円`;
-  };
 
   const percentage = target > 0 ? (current / target) * 100 : 0;
   const remaining = Math.max(target - current, 0);
