@@ -1,0 +1,42 @@
+{
+  "app": {
+    "name": "Solo Saving",
+    "version": "0.1.0",
+    "year": 2025
+  },
+  "savingsGoal": {
+    "targetAmount": 10000000,
+    "currentAmount": 100000,
+    "label": "目標資産額"
+  },
+  "dashboard": {
+    "stats": {
+      "totalAssets": {
+        "title": "総資産額",
+        "tag": "月次",
+        "value": 4610000,
+        "trend": "+8.5%",
+        "trendLabel": "先月比",
+        "variant": "primary"
+      },
+      "holdings": {
+        "title": "保有銘柄数",
+        "tag": "現在",
+        "value": 12,
+        "unit": "銘柄",
+        "trend": "+3銘柄",
+        "trendLabel": "先月比",
+        "variant": "accent"
+      },
+      "yield": {
+        "title": "利回り",
+        "tag": "年率",
+        "value": 3.24,
+        "unit": "%",
+        "trend": "+0.45%",
+        "trendLabel": "先月比",
+        "variant": "neutral"
+      }
+    }
+  }
+}
