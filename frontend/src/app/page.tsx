@@ -1,11 +1,13 @@
 "use client";
 
-import { AssetTrendsSection } from "@/components/AssetTrendsSection";
-import { Footer } from "@/components/Footer";
-import { Header } from "@/components/Header";
-import { PortfolioSection } from "@/components/PortfolioSection";
-import { ProgressBarHero } from "@/components/ProgressBarHero";
-import { StatsCard } from "@/components/StatsCard";
+import {
+  AssetTrendsSection,
+  Footer,
+  Header,
+  PortfolioSection,
+  ProgressBarHero,
+  StatsCard,
+} from "@/components";
 import { appConfig, formatStatValue } from "@/config";
 
 const { dashboard } = appConfig;

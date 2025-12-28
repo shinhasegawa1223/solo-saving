@@ -1,6 +1,6 @@
 "use client";
 
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { ThemeToggle } from "@/components";
 import { appConfig } from "@/config";
 
 const { app } = appConfig;
