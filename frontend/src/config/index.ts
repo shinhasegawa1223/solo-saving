@@ -1,4 +1,5 @@
 import appConfigData from "@/config/appConfig.json";
+import { formatCurrency } from "@/lib/formatters";
 
 // 型定義
 export interface AppConfig {
@@ -34,14 +35,8 @@ export interface StatConfig {
 // 型付きでエクスポート
 export const appConfig: AppConfig = appConfigData as AppConfig;
 
-// 便利なヘルパー関数
-export const formatCurrency = (value: number): string => {
-  return new Intl.NumberFormat("ja-JP", {
-    style: "currency",
-    currency: "JPY",
-    maximumFractionDigits: 0,
-  }).format(value);
-};
+// formatCurrency を re-export
+export { formatCurrency };
 
 export const formatStatValue = (stat: StatConfig): string => {
   if (stat.unit === "銘柄") {

@@ -94,6 +94,6 @@ docker compose down
 - [**RLS Decision**](docs/rls-decision.md)
   - Row Level Security (RLS) の採用理由と設計について説明しています。
 - [**技術選定比較**](docs/technology-comparison.md)
-  -採用した技術スタックと、比較検討した他の技術についての詳細です。
+  - 採用した技術スタックと、比較検討した他の技術についての詳細です。
 - [**IDE選定**](docs/ide-selection.md)
   - Google Antigravityを採用した理由と、コストメリット（3ヶ月950円等）について記載しています。

@@ -2,6 +2,7 @@
 
 import type { CustomTooltipProps } from "@tremor/react";
 import { DonutChart as TremorDonutChart } from "@tremor/react";
+import { chartColorMap } from "@/types";
 
 interface DonutChartData {
   name: string;
@@ -18,22 +19,16 @@ interface DonutChartProps {
   label?: string;
 }
 
-// カラーマッピング（AreaChartと統一）
-const colorMap: Record<string, string> = {
-  indigo: "#6366f1",
-  amber: "#f59e0b",
-  emerald: "#10b981",
-  slate: "#64748b",
-  cyan: "#06b6d4",
-};
-
 // カスタムツールチップコンポーネント（AreaChartと統一したスタイル）
 const CustomTooltip = ({ payload, active }: CustomTooltipProps) => {
   if (!active || !payload || payload.length === 0) return null;
 
   const entry = payload[0];
   const entryColor = String(entry.color || "");
-  const color = colorMap[entryColor] || entryColor || "#6366f1";
+  const color =
+    chartColorMap[entryColor as keyof typeof chartColorMap] ||
+    entryColor ||
+    "#6366f1";
   const name = String(entry.name || "");
   const value = Number(entry.value || 0);
 
