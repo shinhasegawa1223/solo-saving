@@ -44,3 +44,6 @@ trigger: always_on
 3. GitHub 上で PR を作成。
 4. レビュー承認後、main にマージ。
 5. 作業ブランチを削除。
+
+## その他
+git commito が失敗した場合もう一度git add . から実施するようこと
