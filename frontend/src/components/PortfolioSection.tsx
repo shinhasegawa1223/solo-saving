@@ -1,7 +1,6 @@
 "use client";
 
-import { AssetBreakdownItem } from "@/components/AssetBreakdownItem";
-import { DonutChart } from "@/components/DonutChart";
+import { AssetBreakdownItem, DonutChart } from "@/components";
 
 export const PortfolioSection = () => {
   return (

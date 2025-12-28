@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AreaChart } from "@/components/AreaChart";
+import { AreaChart } from "@/components";
 import {
   type CategoryKey,
   categoryConfig,

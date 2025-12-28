@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ProgressBar } from "@/components/ProgressBar";
+import { ProgressBar } from "@/components";
 import { appConfig } from "@/config";
 import { formatCurrency, formatShortCurrency } from "@/lib/formatters";
 
