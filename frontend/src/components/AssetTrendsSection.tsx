@@ -1,33 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AreaChart } from "@/components";
-import {
-  type CategoryKey,
-  categoryConfig,
-  dailyDataRaw,
-  monthlyDataRaw,
-  yearlyDataRaw,
-} from "@/lib/mockData";
-
-// Helper to add total to each data item
-const addTotal = (data: typeof monthlyDataRaw) => {
-  return data.map((item) => ({
-    ...item,
-    合計: item.日本株 + item.米国株 + item.投資信託 + item.現金,
-  }));
-};
-
-const monthlyData = addTotal(monthlyDataRaw);
-const yearlyData = addTotal(yearlyDataRaw);
-const dailyData = addTotal(dailyDataRaw);
+import { type ChartData, getChartData } from "@/lib/api";
+import { type CategoryKey, categoryConfig } from "@/lib/mockData";
 
 type TimePeriod = "year" | "month" | "day";
 
 const timePeriodConfig = {
-  year: { label: "年", data: yearlyData },
-  month: { label: "月", data: monthlyData },
-  day: { label: "日", data: dailyData },
+  year: { label: "年" },
+  month: { label: "月" },
+  day: { label: "日" },
 };
 
 export const AssetTrendsSection = () => {
@@ -39,6 +22,28 @@ export const AssetTrendsSection = () => {
     "現金",
   ]);
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("month");
+  const [chartData, setChartData] = useState<ChartData[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // API からデータを取得
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const data = await getChartData(timePeriod);
+        setChartData(data);
+      } catch (err) {
+        console.error("Failed to fetch chart data:", err);
+        setError("データの取得に失敗しました");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [timePeriod]);
 
   const toggleCategory = (category: CategoryKey) => {
     setSelectedCategories((prev) => {
@@ -53,7 +58,44 @@ export const AssetTrendsSection = () => {
   const selectedColors = selectedCategories.map(
     (cat) => categoryConfig[cat].color
   );
-  const currentChartData = timePeriodConfig[timePeriod].data;
+
+  // Y軸の上限を計算（5等分できるきれいな数字に）
+  const calculateMaxValue = () => {
+    if (chartData.length === 0) return undefined;
+
+    let maxVal = 0;
+    for (const item of chartData) {
+      for (const cat of selectedCategories) {
+        const val = Number(item[cat]) || 0;
+        if (val > maxVal) maxVal = val;
+      }
+    }
+
+    // 余裕を持たせる（+25%）
+    const withMargin = maxVal * 1.25;
+
+    // 5で割り切れるきれいな数字を選ぶ
+    // 目盛りが 0, 5万, 10万, 15万, 20万 のようになる
+    const niceIntervals = [
+      50000, // 5万刻み → 最大25万まで
+      100000, // 10万刻み → 最大50万まで
+      200000, // 20万刻み → 最大100万まで
+      500000, // 50万刻み → 最大250万まで
+      1000000, // 100万刻み
+    ];
+
+    for (const interval of niceIntervals) {
+      const maxValue = Math.ceil(withMargin / interval) * interval;
+      if (maxValue >= withMargin) {
+        return maxValue;
+      }
+    }
+
+    // デフォルト: 100万刻み
+    return Math.ceil(withMargin / 1000000) * 1000000;
+  };
+
+  const chartMaxValue = calculateMaxValue();
 
   return (
     <section className="p-8 rounded-2xl bg-white dark:bg-[#1e293b] border border-[#e2e8f0] dark:border-[#334155] shadow-lg">
@@ -123,21 +165,43 @@ export const AssetTrendsSection = () => {
       </div>
 
       <div className="chart-container">
-        <AreaChart
-          className="h-80"
-          data={currentChartData}
-          index="date"
-          categories={selectedCategories}
-          colors={selectedColors}
-          valueFormatter={(number: number) => {
-            if (number >= 1000000) {
-              return `¥${(number / 1000000).toFixed(1)}M`;
-            }
-            return `¥${(number / 1000).toFixed(0)}K`;
-          }}
-          showLegend={false}
-          yAxisWidth={70}
-        />
+        {isLoading ? (
+          <div className="h-80 flex items-center justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1e3a5f] dark:border-[#c9a227]" />
+          </div>
+        ) : error ? (
+          <div className="h-80 flex items-center justify-center text-red-500">
+            {error}
+          </div>
+        ) : (
+          <AreaChart
+            className="h-80"
+            data={chartData}
+            index="date"
+            categories={selectedCategories}
+            colors={selectedColors}
+            valueFormatter={(number: number) => {
+              if (number >= 10000000) {
+                // 1000万以上: ¥10M
+                return `¥${(number / 1000000).toFixed(0)}M`;
+              }
+              if (number >= 1000000) {
+                // 100万以上: ¥1.5M
+                return `¥${(number / 1000000).toFixed(1)}M`;
+              }
+              if (number >= 10000) {
+                // 1万以上: ¥13.7万
+                return `¥${(number / 10000).toFixed(1)}万`;
+              }
+              // 1万未満: ¥9,000
+              return `¥${number.toLocaleString()}`;
+            }}
+            showLegend={false}
+            yAxisWidth={80}
+            maxValue={chartMaxValue}
+            minValue={0}
+          />
+        )}
       </div>
     </section>
   );

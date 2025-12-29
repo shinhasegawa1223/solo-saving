@@ -16,6 +16,8 @@ interface AreaChartProps {
   showXAxis?: boolean;
   showYAxis?: boolean;
   yAxisWidth?: number;
+  maxValue?: number;
+  minValue?: number;
 }
 
 // カスタムツールチップコンポーネント
@@ -75,6 +77,8 @@ export function AreaChart({
   showXAxis = true,
   showYAxis = true,
   yAxisWidth = 80,
+  maxValue,
+  minValue,
 }: AreaChartProps) {
   return (
     <TremorAreaChart
@@ -91,6 +95,8 @@ export function AreaChart({
       showYAxis={showYAxis}
       yAxisWidth={yAxisWidth}
       customTooltip={CustomTooltip}
+      maxValue={maxValue}
+      minValue={minValue}
     />
   );
 }
