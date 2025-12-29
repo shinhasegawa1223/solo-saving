@@ -14,6 +14,7 @@ from alembic import context
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+from app import models  # noqa: F401 - Import models for autogenerate
 from app.database import Base, settings
 
 # this is the Alembic Config object, which provides
