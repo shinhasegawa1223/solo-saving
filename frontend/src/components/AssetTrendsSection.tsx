@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { AreaChart } from "@/components";
 import { type ChartData, getChartData } from "@/lib/api";
-import { type CategoryKey, categoryConfig } from "@/lib/mockData";
+import { type CategoryKey, categoryConfig } from "@/lib/constants";
 
 type TimePeriod = "year" | "month" | "day";
 
