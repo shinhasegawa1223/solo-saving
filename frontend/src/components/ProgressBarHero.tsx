@@ -1,43 +1,90 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ProgressBar } from "@/components";
 import { appConfig } from "@/config";
+import { getGoals, type SavingsGoal, updateGoal } from "@/lib/api";
 import { formatCurrency, formatShortCurrency } from "@/lib/formatters";
 
 interface ProgressBarHeroProps {
-  targetAmount?: number;
-  currentAmount?: number;
-  targetLabel?: string;
   className?: string;
 }
 
-export const ProgressBarHero = ({
-  targetAmount = appConfig.savingsGoal.targetAmount,
-  currentAmount = appConfig.savingsGoal.currentAmount,
-  targetLabel = appConfig.savingsGoal.label,
-  className,
-}: ProgressBarHeroProps) => {
-  const [target, setTarget] = useState(targetAmount);
-  const [current, setCurrent] = useState(currentAmount);
+export const ProgressBarHero = ({ className }: ProgressBarHeroProps) => {
+  const [goal, setGoal] = useState<SavingsGoal | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
-  const [editTarget, setEditTarget] = useState(target.toString());
-  const [editCurrent, setEditCurrent] = useState(current.toString());
+  const [editTarget, setEditTarget] = useState("");
+  const [editCurrent, setEditCurrent] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+
+  // フォールバック値（API がエラーの場合に使用）
+  const fallbackTarget = appConfig.savingsGoal.targetAmount;
+  const fallbackCurrent = appConfig.savingsGoal.currentAmount;
+  const fallbackLabel = appConfig.savingsGoal.label;
+
+  // 表示用の値
+  const target = goal ? Number(goal.target_amount) : fallbackTarget;
+  const current = goal ? Number(goal.current_amount) : fallbackCurrent;
+  const targetLabel = goal ? goal.label : fallbackLabel;
+
+  useEffect(() => {
+    const fetchGoals = async () => {
+      setIsLoading(true);
+      try {
+        const goals = await getGoals(true);
+        if (goals.length > 0) {
+          setGoal(goals[0]);
+          setEditTarget(goals[0].target_amount.toString());
+          setEditCurrent(goals[0].current_amount.toString());
+        }
+      } catch (err) {
+        console.error("Failed to fetch goals:", err);
+        // フォールバック値を使用
+        setEditTarget(fallbackTarget.toString());
+        setEditCurrent(fallbackCurrent.toString());
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchGoals();
+  }, [fallbackTarget, fallbackCurrent]);
 
   const percentage = target > 0 ? (current / target) * 100 : 0;
   const remaining = Math.max(target - current, 0);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const newTarget = Number.parseInt(editTarget.replace(/,/g, ""), 10);
     const newCurrent = Number.parseInt(editCurrent.replace(/,/g, ""), 10);
 
-    if (!Number.isNaN(newTarget) && newTarget > 0) {
-      setTarget(newTarget);
+    if (Number.isNaN(newTarget) || newTarget <= 0) return;
+    if (Number.isNaN(newCurrent) || newCurrent < 0) return;
+
+    setIsSaving(true);
+    try {
+      if (goal) {
+        const updated = await updateGoal(goal.id, {
+          target_amount: newTarget,
+          current_amount: newCurrent,
+        });
+        setGoal(updated);
+      }
+      setIsEditing(false);
+    } catch (err) {
+      console.error("Failed to update goal:", err);
+      // ローカルで更新（オフライン対応）
+      if (goal) {
+        setGoal({
+          ...goal,
+          target_amount: newTarget,
+          current_amount: newCurrent,
+        });
+      }
+      setIsEditing(false);
+    } finally {
+      setIsSaving(false);
     }
-    if (!Number.isNaN(newCurrent) && newCurrent >= 0) {
-      setCurrent(newCurrent);
-    }
-    setIsEditing(false);
   };
 
   const handleCancel = () => {
@@ -45,6 +92,18 @@ export const ProgressBarHero = ({
     setEditCurrent(current.toString());
     setIsEditing(false);
   };
+
+  if (isLoading) {
+    return (
+      <div
+        className={`p-6 rounded-2xl bg-white dark:bg-[#1e293b] border border-[#e2e8f0] dark:border-[#334155] shadow-xl ${className || ""}`}
+      >
+        <div className="h-40 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1e3a5f] dark:border-[#c9a227]" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -144,9 +203,10 @@ export const ProgressBarHero = ({
           <button
             type="button"
             onClick={handleSave}
-            className="w-full py-2 rounded-lg bg-gradient-to-r from-[#1e3a5f] to-[#2d4a7c] text-white font-medium hover:opacity-90 transition-opacity"
+            disabled={isSaving}
+            className="w-full py-2 rounded-lg bg-gradient-to-r from-[#1e3a5f] to-[#2d4a7c] text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
           >
-            保存
+            {isSaving ? "保存中..." : "保存"}
           </button>
         </div>
       ) : (
