@@ -1,5 +1,6 @@
 "use client";
 
+import { Building2, Globe, TrendingUp, Wallet } from "lucide-react";
 import { AssetBreakdownItem, DonutChart } from "@/components";
 
 export const PortfolioSection = () => {
@@ -37,7 +38,7 @@ export const PortfolioSection = () => {
         {/* 詳細情報 */}
         <div className="w-full lg:w-1/2 space-y-4">
           <AssetBreakdownItem
-            icon="🇯🇵"
+            icon={<Building2 className="w-5 h-5" />}
             title="日本株"
             subtitle="国内株式"
             value="¥1,350,000"
@@ -45,7 +46,7 @@ export const PortfolioSection = () => {
             color="indigo"
           />
           <AssetBreakdownItem
-            icon="🇺🇸"
+            icon={<Globe className="w-5 h-5" />}
             title="米国株"
             subtitle="米国株式"
             value="¥1,600,000"
@@ -53,7 +54,7 @@ export const PortfolioSection = () => {
             color="amber"
           />
           <AssetBreakdownItem
-            icon="📊"
+            icon={<TrendingUp className="w-5 h-5" />}
             title="投資信託"
             subtitle="ファンド"
             value="¥1,050,000"
@@ -61,7 +62,7 @@ export const PortfolioSection = () => {
             color="emerald"
           />
           <AssetBreakdownItem
-            icon="💵"
+            icon={<Wallet className="w-5 h-5" />}
             title="現金"
             subtitle="預金・現金"
             value="¥610,000"

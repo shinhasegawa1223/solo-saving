@@ -1,5 +1,7 @@
+import type { ReactNode } from "react";
+
 interface AssetBreakdownItemProps {
-  icon: string;
+  icon: ReactNode;
   title: string;
   subtitle: string;
   value: string;
