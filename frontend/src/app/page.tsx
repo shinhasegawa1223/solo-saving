@@ -52,7 +52,7 @@ export default function Home() {
                 tag="Total Assets"
                 value={formatCurrency(Number(stats.total_assets))}
                 trend={stats.total_assets_trend}
-                trendLabel="先月比"
+                trendLabel="前日比"
                 variant="primary"
               />
               <StatsCard
@@ -60,7 +60,7 @@ export default function Home() {
                 tag="Holdings"
                 value={`${stats.holding_count}銘柄`}
                 trend={stats.holding_count_trend}
-                trendLabel="先月比"
+                trendLabel="前日比"
                 variant="accent"
               />
               <StatsCard
@@ -68,7 +68,7 @@ export default function Home() {
                 tag="Yield"
                 value={stats.yield_rate ? `${stats.yield_rate}%` : "-%"}
                 trend={stats.yield_rate_trend}
-                trendLabel="先月比"
+                trendLabel="前日比"
                 variant="neutral"
               />
             </>
