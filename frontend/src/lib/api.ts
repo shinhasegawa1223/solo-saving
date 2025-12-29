@@ -56,6 +56,7 @@ export interface PortfolioItem {
 export interface DashboardStats {
   total_assets: number;
   total_assets_trend: string;
+  total_assets_diff: string; // "+¥123,000"
   holding_count: number;
   holding_count_trend: string;
   yield_rate: number | null;

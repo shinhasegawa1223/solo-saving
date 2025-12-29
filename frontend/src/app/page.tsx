@@ -52,9 +52,11 @@ export default function Home() {
                 tag="Total Assets"
                 value={formatCurrency(Number(stats.total_assets))}
                 trend={stats.total_assets_trend}
+                subTrend={stats.total_assets_diff}
                 trendLabel="前日比"
                 variant="primary"
               />
+
               <StatsCard
                 title="保有銘柄"
                 tag="Holdings"

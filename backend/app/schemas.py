@@ -324,6 +324,12 @@ class DashboardStats(BaseModel):
         description="総資産の前月比",
         json_schema_extra={"example": "+5.2%"},
     )
+    total_assets_diff: str = Field(
+        ...,
+        description="総資産の前月比（金額）",
+        json_schema_extra={"example": "+¥100,000"},
+    )
+
     holding_count: int = Field(
         ...,
         description="保有銘柄数",
