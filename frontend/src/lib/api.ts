@@ -156,3 +156,97 @@ export async function updateGoal(
 export async function getLatestSnapshot(): Promise<AssetSnapshot | null> {
   return fetchApi<AssetSnapshot | null>("/api/snapshots/latest");
 }
+
+/** ダッシュボード全データ */
+export interface DashboardAllData {
+  stats: DashboardStats;
+  chartData: ChartData[];
+  portfolio: PortfolioItem[];
+  assets: Asset[];
+  goals: SavingsGoal[];
+}
+
+/**
+ * ダッシュボードの全データを並列取得
+ * @param chartPeriod - チャートの集計期間
+ */
+export async function getDashboardAllData(
+  chartPeriod: "day" | "month" | "year" = "month"
+): Promise<DashboardAllData> {
+  const [stats, chartData, portfolio, assets, goals] = await Promise.all([
+    getDashboardStats(),
+    getChartData(chartPeriod),
+    getPortfolio(),
+    getAssets(),
+    getGoals(true),
+  ]);
+
+  return { stats, chartData, portfolio, assets, goals };
+}
+
+// ============================================
+// 資産（銘柄）関連
+// ============================================
+
+/** 資産カテゴリ */
+export interface AssetCategory {
+  id: number;
+  name: string;
+  name_en: string;
+  color: string;
+  icon: string | null;
+}
+
+/** 資産（銘柄） */
+export interface Asset {
+  id: string;
+  category_id: number;
+  name: string;
+  ticker_symbol: string | null;
+  quantity: number;
+  average_cost: number | null;
+  current_price: number | null;
+  current_value: number | null;
+  currency: string;
+  created_at: string;
+  updated_at: string;
+  category: AssetCategory | null;
+}
+
+/** 資産履歴（チャート用） */
+export interface AssetHistoryData {
+  date: string;
+  price: number | null;
+  value: number;
+}
+
+/**
+ * 資産一覧を取得
+ * @param categoryId - カテゴリIDで絞り込み（オプション）
+ */
+export async function getAssets(categoryId?: number): Promise<Asset[]> {
+  const params = categoryId ? `?category_id=${categoryId}` : "";
+  return fetchApi<Asset[]>(`/api/assets${params}`);
+}
+
+/**
+ * 個別資産を取得
+ * @param assetId - 資産ID
+ */
+export async function getAsset(assetId: string): Promise<Asset> {
+  return fetchApi<Asset>(`/api/assets/${assetId}`);
+}
+
+/**
+ * 資産の価格履歴を取得
+ * @param assetId - 資産ID
+ * @param days - 取得日数（デフォルト30日）
+ */
+export async function getAssetHistory(
+  assetId: string,
+  days = 30
+): Promise<AssetHistoryData[]> {
+  return fetchApi<AssetHistoryData[]>(
+    `/api/assets/${assetId}/history?days=${days}`
+  );
+}

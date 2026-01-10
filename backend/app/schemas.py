@@ -168,6 +168,18 @@ class AssetHistoryResponse(AssetHistoryBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+class AssetHistoryChartData(BaseModel):
+    """資産履歴チャート表示用スキーマ"""
+
+    date: str = Field(
+        ...,
+        description="表示用日付文字列",
+        json_schema_extra={"example": "01/08"},
+    )
+    price: Decimal | None = Field(None, description="その日の価格")
+    value: Decimal = Field(..., description="その日の評価額")
+
+
 # ============================================
 # 資産スナップショット スキーマ
 # チャート表示用の日次集計データ

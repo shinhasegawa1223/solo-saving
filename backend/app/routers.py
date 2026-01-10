@@ -20,10 +20,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
-from app.models import Asset, AssetCategory, AssetSnapshot, SavingsGoal
+from app.models import Asset, AssetCategory, AssetHistory, AssetSnapshot, SavingsGoal
 from app.schemas import (
     AssetCategoryResponse,
     AssetCreate,
+    AssetHistoryChartData,
     AssetResponse,
     AssetSnapshotChartData,
     AssetSnapshotCreate,
@@ -223,6 +224,61 @@ async def delete_asset(
     if not asset:
         raise HTTPException(status_code=404, detail="資産が見つかりません")
     await db.delete(asset)
+
+
+@assets_router.get(
+    "/{asset_id}/history",
+    response_model=list[AssetHistoryChartData],
+    summary="資産履歴取得",
+    description="指定された資産の価格履歴を取得します。",
+)
+async def get_asset_history(
+    asset_id: UUID,
+    days: int = Query(
+        default=30,
+        le=365,
+        description="取得日数（最大365日）",
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    資産の価格履歴を取得（チャート表示用）。
+
+    Args:
+        asset_id: 資産ID（UUID）
+        days: 取得日数（デフォルト30日）
+
+    Returns:
+        価格履歴リスト（日付、価格、評価額）
+
+    Raises:
+        404: 資産が見つからない場合
+    """
+    # 資産の存在確認
+    result = await db.execute(select(Asset).where(Asset.id == asset_id))
+    asset = result.scalar_one_or_none()
+    if not asset:
+        raise HTTPException(status_code=404, detail="資産が見つかりません")
+
+    # 履歴を取得
+    start_date = date.today() - timedelta(days=days)
+    query = (
+        select(AssetHistory)
+        .where(AssetHistory.asset_id == asset_id)
+        .where(AssetHistory.record_date >= start_date)
+        .order_by(AssetHistory.record_date)
+    )
+    result = await db.execute(query)
+    histories = result.scalars().all()
+
+    return [
+        AssetHistoryChartData(
+            date=h.record_date.strftime("%m/%d"),
+            price=h.price,
+            value=h.value,
+        )
+        for h in histories
+    ]
 
 
 # ============================================

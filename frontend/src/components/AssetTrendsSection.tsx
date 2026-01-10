@@ -13,7 +13,13 @@ const timePeriodConfig = {
   day: { label: "日" },
 };
 
-export const AssetTrendsSection = () => {
+interface AssetTrendsSectionProps {
+  initialData?: ChartData[];
+}
+
+export const AssetTrendsSection = ({
+  initialData,
+}: AssetTrendsSectionProps) => {
   const [selectedCategories, setSelectedCategories] = useState<CategoryKey[]>([
     "合計",
     "日本株",
@@ -22,12 +28,18 @@ export const AssetTrendsSection = () => {
     "現金",
   ]);
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("month");
-  const [chartData, setChartData] = useState<ChartData[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [chartData, setChartData] = useState<ChartData[]>(initialData || []);
+  const [isLoading, setIsLoading] = useState(!initialData);
   const [error, setError] = useState<string | null>(null);
+  const [initialPeriod] = useState<TimePeriod>("month"); // 初期データの期間を記録
 
-  // API からデータを取得
+  // 期間変更時のみAPIから取得（初期データと同じ期間の場合はスキップ）
   useEffect(() => {
+    // 初期データがあり、かつ期間がmonth（初期値）の場合はスキップ
+    if (initialData && timePeriod === initialPeriod) {
+      return;
+    }
+
     const fetchData = async () => {
       setIsLoading(true);
       setError(null);
@@ -43,7 +55,7 @@ export const AssetTrendsSection = () => {
     };
 
     fetchData();
-  }, [timePeriod]);
+  }, [timePeriod, initialData, initialPeriod]);
 
   const toggleCategory = (category: CategoryKey) => {
     setSelectedCategories((prev) => {

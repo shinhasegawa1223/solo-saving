@@ -8,11 +8,15 @@ import { formatCurrency, formatShortCurrency } from "@/lib/formatters";
 
 interface ProgressBarHeroProps {
   className?: string;
+  initialGoal?: SavingsGoal | null;
 }
 
-export const ProgressBarHero = ({ className }: ProgressBarHeroProps) => {
-  const [goal, setGoal] = useState<SavingsGoal | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+export const ProgressBarHero = ({
+  className,
+  initialGoal,
+}: ProgressBarHeroProps) => {
+  const [goal, setGoal] = useState<SavingsGoal | null>(initialGoal || null);
+  const [isLoading, setIsLoading] = useState(!initialGoal);
   const [isEditing, setIsEditing] = useState(false);
   const [editTarget, setEditTarget] = useState("");
   const [editCurrent, setEditCurrent] = useState("");
@@ -28,28 +32,37 @@ export const ProgressBarHero = ({ className }: ProgressBarHeroProps) => {
   const current = goal ? Number(goal.current_amount) : fallbackCurrent;
   const targetLabel = goal ? goal.label : fallbackLabel;
 
+  // 編集フォームの初期値を設定
   useEffect(() => {
+    if (goal) {
+      setEditTarget(goal.target_amount.toString());
+      setEditCurrent(goal.current_amount.toString());
+    } else {
+      setEditTarget(fallbackTarget.toString());
+      setEditCurrent(fallbackCurrent.toString());
+    }
+  }, [goal, fallbackTarget, fallbackCurrent]);
+
+  // initialGoalがない場合のみAPIから取得
+  useEffect(() => {
+    if (initialGoal !== undefined) return; // propsで渡された場合はスキップ
+
     const fetchGoals = async () => {
       setIsLoading(true);
       try {
         const goals = await getGoals(true);
         if (goals.length > 0) {
           setGoal(goals[0]);
-          setEditTarget(goals[0].target_amount.toString());
-          setEditCurrent(goals[0].current_amount.toString());
         }
       } catch (err) {
         console.error("Failed to fetch goals:", err);
-        // フォールバック値を使用
-        setEditTarget(fallbackTarget.toString());
-        setEditCurrent(fallbackCurrent.toString());
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchGoals();
-  }, [fallbackTarget, fallbackCurrent]);
+  }, [initialGoal]);
 
   const percentage = target > 0 ? (current / target) * 100 : 0;
   const remaining = Math.max(target - current, 0);
