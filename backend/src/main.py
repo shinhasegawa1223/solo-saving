@@ -72,7 +72,10 @@ Solo Saving は個人の資産を管理・可視化するためのAPIです。
 # ==============================================
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # フロントエンドのURL
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:3001",
+    ],  # フロントエンドのURL
     allow_credentials=True,
     allow_methods=["*"],  # すべてのHTTPメソッドを許可
     allow_headers=["*"],  # すべてのヘッダーを許可

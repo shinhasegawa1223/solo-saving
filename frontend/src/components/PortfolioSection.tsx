@@ -1,9 +1,21 @@
 "use client";
 
-import { Building2, Globe, TrendingUp, Wallet } from "lucide-react";
+import {
+  Building2,
+  ChevronRight,
+  Globe,
+  TrendingUp,
+  Wallet,
+} from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AssetBreakdownItem, DonutChart } from "@/components";
-import { getPortfolio, type PortfolioItem } from "@/lib/api";
+import {
+  type Asset,
+  getAssets,
+  getPortfolio,
+  type PortfolioItem,
+} from "@/lib/api";
 
 // アイコンのマッピング
 const iconMap: Record<string, React.ReactNode> = {
@@ -21,18 +33,47 @@ const subtitleMap: Record<string, string> = {
   現金: "預金・現金",
 };
 
-export const PortfolioSection = () => {
-  const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+// カテゴリカラーのマッピング
+const categoryColorMap: Record<number, string> = {
+  1: "bg-indigo-500",
+  2: "bg-amber-500",
+  3: "bg-emerald-500",
+  4: "bg-slate-500",
+};
+
+interface PortfolioSectionProps {
+  initialPortfolio?: PortfolioItem[];
+  initialAssets?: Asset[];
+}
+
+export const PortfolioSection = ({
+  initialPortfolio,
+  initialAssets,
+}: PortfolioSectionProps) => {
+  const [portfolio, setPortfolio] = useState<PortfolioItem[]>(
+    initialPortfolio || []
+  );
+  const [assets, setAssets] = useState<Asset[]>(
+    initialAssets ? initialAssets.filter((a) => a.category_id !== 4) : []
+  );
+  const [isLoading, setIsLoading] = useState(!initialPortfolio);
   const [error, setError] = useState<string | null>(null);
 
+  // initialデータがない場合のみAPIから取得
   useEffect(() => {
+    if (initialPortfolio !== undefined) return; // propsで渡された場合はスキップ
+
     const fetchData = async () => {
       setIsLoading(true);
       setError(null);
       try {
-        const data = await getPortfolio();
-        setPortfolio(data);
+        const [portfolioData, assetsData] = await Promise.all([
+          getPortfolio(),
+          getAssets(),
+        ]);
+        setPortfolio(portfolioData);
+        // 現金を除外してソート
+        setAssets(assetsData.filter((a) => a.category_id !== 4));
       } catch (err) {
         console.error("Failed to fetch portfolio:", err);
         setError("データの取得に失敗しました");
@@ -42,7 +83,7 @@ export const PortfolioSection = () => {
     };
 
     fetchData();
-  }, []);
+  }, [initialPortfolio]);
 
   // 総資産額を計算
   const totalValue = portfolio.reduce(
@@ -80,48 +121,123 @@ export const PortfolioSection = () => {
   }
 
   return (
-    <section className="p-8 rounded-2xl bg-white dark:bg-[#1e293b] border border-[#e2e8f0] dark:border-[#334155] shadow-lg">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-1.5 h-8 rounded-full bg-gradient-to-b from-[#6366f1] to-[#8b5cf6]" />
-        <div>
-          <h2 className="text-xl font-bold text-[#1e293b] dark:text-white">
-            ポートフォリオ構成
-          </h2>
-          <p className="text-sm text-[#64748b] dark:text-[#94a3b8]">
-            資産カテゴリ別の配分比率
-          </p>
-        </div>
-      </div>
-
-      <div className="flex flex-col lg:flex-row items-center gap-8">
-        {/* 円グラフ */}
-        <div className="w-full lg:w-1/2 h-80">
-          <DonutChart
-            data={donutData}
-            colors={donutColors}
-            valueFormatter={(value: number) => `¥${value.toLocaleString()}`}
-            variant="donut"
-            label={`¥${totalValue.toLocaleString()}`}
-          />
+    <section className="space-y-6">
+      {/* カテゴリ別構成 */}
+      <div className="p-8 rounded-2xl bg-white dark:bg-[#1e293b] border border-[#e2e8f0] dark:border-[#334155] shadow-lg">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-1.5 h-8 rounded-full bg-gradient-to-b from-[#6366f1] to-[#8b5cf6]" />
+          <div>
+            <h2 className="text-xl font-bold text-[#1e293b] dark:text-white">
+              ポートフォリオ構成
+            </h2>
+            <p className="text-sm text-[#64748b] dark:text-[#94a3b8]">
+              資産カテゴリ別の配分比率
+            </p>
+          </div>
         </div>
 
-        {/* 詳細情報 */}
-        <div className="w-full lg:w-1/2 space-y-4">
-          {portfolio.map((item) => (
-            <AssetBreakdownItem
-              key={item.name}
-              icon={
-                iconMap[item.icon || ""] || <Building2 className="w-5 h-5" />
-              }
-              title={item.name}
-              subtitle={subtitleMap[item.name] || item.name}
-              value={`¥${Number(item.value).toLocaleString()}`}
-              percentage={`${Number(item.percentage).toFixed(1)}%`}
-              color={item.color as "indigo" | "amber" | "emerald" | "slate"}
+        <div className="flex flex-col lg:flex-row items-center gap-8">
+          {/* 円グラフ */}
+          <div className="w-full lg:w-1/2 h-80">
+            <DonutChart
+              data={donutData}
+              colors={donutColors}
+              valueFormatter={(value: number) => `¥${value.toLocaleString()}`}
+              variant="donut"
+              label={`¥${totalValue.toLocaleString()}`}
             />
-          ))}
+          </div>
+
+          {/* 詳細情報 */}
+          <div className="w-full lg:w-1/2 space-y-4">
+            {portfolio.map((item) => (
+              <AssetBreakdownItem
+                key={item.name}
+                icon={
+                  iconMap[item.icon || ""] || <Building2 className="w-5 h-5" />
+                }
+                title={item.name}
+                subtitle={subtitleMap[item.name] || item.name}
+                value={`¥${Number(item.value).toLocaleString()}`}
+                percentage={`${Number(item.percentage).toFixed(1)}%`}
+                color={item.color as "indigo" | "amber" | "emerald" | "slate"}
+              />
+            ))}
+          </div>
         </div>
       </div>
+
+      {/* 個別銘柄リスト */}
+      {assets.length > 0 && (
+        <div
+          id="holdings"
+          className="p-8 rounded-2xl bg-white dark:bg-[#1e293b] border border-[#e2e8f0] dark:border-[#334155] shadow-lg scroll-mt-24"
+        >
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-1.5 h-8 rounded-full bg-gradient-to-b from-[#10b981] to-[#059669]" />
+            <div>
+              <h2 className="text-xl font-bold text-[#1e293b] dark:text-white">
+                保有銘柄
+              </h2>
+              <p className="text-sm text-[#64748b] dark:text-[#94a3b8]">
+                個別銘柄をクリックして詳細を確認
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {assets.map((asset) => (
+              <Link
+                key={asset.id}
+                href={`/assets/${asset.id}`}
+                className="flex items-center justify-between p-4 rounded-xl bg-[#f8fafc] dark:bg-[#0f172a] hover:bg-[#f1f5f9] dark:hover:bg-[#1e293b] transition-colors group"
+              >
+                <div className="flex items-center gap-4">
+                  <div
+                    className={`w-2 h-10 rounded-full ${categoryColorMap[asset.category_id] || "bg-gray-500"}`}
+                  />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-[#1e293b] dark:text-white">
+                        {asset.name}
+                      </span>
+                      {asset.ticker_symbol && (
+                        <span className="text-sm text-[#64748b] dark:text-[#94a3b8]">
+                          ({asset.ticker_symbol})
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-sm text-[#64748b] dark:text-[#94a3b8]">
+                      {Number(asset.quantity) % 1 === 0
+                        ? `${Math.floor(Number(asset.quantity))}株`
+                        : `${Number(asset.quantity).toFixed(2)}株`}{" "}
+                      × {asset.currency === "USD" ? "$" : "¥"}
+                      {Number(asset.current_price || 0).toLocaleString(
+                        undefined,
+                        {
+                          minimumFractionDigits:
+                            asset.currency === "USD" ? 2 : 0,
+                          maximumFractionDigits:
+                            asset.currency === "USD" ? 2 : 0,
+                        }
+                      )}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="font-bold text-[#1e293b] dark:text-white">
+                    ¥
+                    {Math.round(
+                      Number(asset.current_value || 0)
+                    ).toLocaleString()}
+                  </span>
+                  <ChevronRight className="w-5 h-5 text-[#94a3b8] group-hover:text-[#6366f1] transition-colors" />
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
     </section>
   );
 };

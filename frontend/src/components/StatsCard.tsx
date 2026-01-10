@@ -8,6 +8,7 @@ interface StatsCardProps {
   trendLabel: string;
   variant: "primary" | "accent" | "neutral";
   icon?: ReactNode;
+  subTrend?: string;
 }
 
 export const StatsCard = ({
@@ -15,6 +16,7 @@ export const StatsCard = ({
   tag,
   value,
   trend,
+  subTrend,
   trendLabel,
   variant,
   icon,
@@ -77,31 +79,38 @@ export const StatsCard = ({
         </div>
         <p className="text-4xl font-bold tracking-tight">{value}</p>
         <div className="flex items-center gap-2 mt-4">
-          <span
-            className={`inline-flex items-center gap-1 text-sm font-bold ${currentStyle.trendText}`}
-          >
-            {icon || (
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                role="img"
-                aria-label="trend icon"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
-                />
-              </svg>
-            )}
-            {trend}
-          </span>
-          <span className={`text-sm ${currentStyle.trendLabel}`}>
-            {trendLabel}
-          </span>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
+            <span
+              className={`inline-flex items-center gap-1 text-sm font-bold ${currentStyle.trendText}`}
+            >
+              {icon || (
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  role="img"
+                  aria-label="trend icon"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+                  />
+                </svg>
+              )}
+              {trend}
+              {subTrend && (
+                <span className="opacity-80 font-normal ml-1">
+                  ({subTrend})
+                </span>
+              )}
+            </span>
+            <span className={`text-sm ${currentStyle.trendLabel}`}>
+              {trendLabel}
+            </span>
+          </div>
         </div>
       </div>
     </div>

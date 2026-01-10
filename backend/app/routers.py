@@ -20,10 +20,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
-from app.models import Asset, AssetCategory, AssetSnapshot, SavingsGoal
+from app.models import Asset, AssetCategory, AssetHistory, AssetSnapshot, SavingsGoal
 from app.schemas import (
     AssetCategoryResponse,
     AssetCreate,
+    AssetHistoryChartData,
     AssetResponse,
     AssetSnapshotChartData,
     AssetSnapshotCreate,
@@ -223,6 +224,61 @@ async def delete_asset(
     if not asset:
         raise HTTPException(status_code=404, detail="資産が見つかりません")
     await db.delete(asset)
+
+
+@assets_router.get(
+    "/{asset_id}/history",
+    response_model=list[AssetHistoryChartData],
+    summary="資産履歴取得",
+    description="指定された資産の価格履歴を取得します。",
+)
+async def get_asset_history(
+    asset_id: UUID,
+    days: int = Query(
+        default=30,
+        le=365,
+        description="取得日数（最大365日）",
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    資産の価格履歴を取得（チャート表示用）。
+
+    Args:
+        asset_id: 資産ID（UUID）
+        days: 取得日数（デフォルト30日）
+
+    Returns:
+        価格履歴リスト（日付、価格、評価額）
+
+    Raises:
+        404: 資産が見つからない場合
+    """
+    # 資産の存在確認
+    result = await db.execute(select(Asset).where(Asset.id == asset_id))
+    asset = result.scalar_one_or_none()
+    if not asset:
+        raise HTTPException(status_code=404, detail="資産が見つかりません")
+
+    # 履歴を取得
+    start_date = date.today() - timedelta(days=days)
+    query = (
+        select(AssetHistory)
+        .where(AssetHistory.asset_id == asset_id)
+        .where(AssetHistory.record_date >= start_date)
+        .order_by(AssetHistory.record_date)
+    )
+    result = await db.execute(query)
+    histories = result.scalars().all()
+
+    return [
+        AssetHistoryChartData(
+            date=h.record_date.strftime("%m/%d"),
+            price=h.price,
+            value=h.value,
+        )
+        for h in histories
+    ]
 
 
 # ============================================
@@ -634,43 +690,40 @@ async def get_dashboard_stats(db: AsyncSession = Depends(get_db)):
     Returns:
         統計情報
     """
-    # 最新のスナップショットを取得
-    latest_result = await db.execute(
-        select(AssetSnapshot).order_by(AssetSnapshot.snapshot_date.desc()).limit(1)
+    # 最新のスナップショットとその1つ前を取得
+    snapshots_result = await db.execute(
+        select(AssetSnapshot).order_by(AssetSnapshot.snapshot_date.desc()).limit(2)
     )
-    latest = latest_result.scalar_one_or_none()
-
-    # 前月のスナップショットを取得（トレンド計算用）
-    today = date.today()
-    last_month = today.replace(day=1) - timedelta(days=1)
-    prev_result = await db.execute(
-        select(AssetSnapshot)
-        .where(AssetSnapshot.snapshot_date <= last_month)
-        .order_by(AssetSnapshot.snapshot_date.desc())
-        .limit(1)
-    )
-    prev = prev_result.scalar_one_or_none()
+    snapshots = snapshots_result.scalars().all()
 
     # データがない場合のデフォルト値
-    if not latest:
+    if not snapshots:
         return DashboardStats(
             total_assets=Decimal("0"),
             total_assets_trend="+0%",
+            total_assets_diff="+¥0",
             holding_count=0,
             holding_count_trend="+0",
             yield_rate=None,
             yield_rate_trend="+0%",
         )
 
-    # トレンド（前月比）を計算
+    latest = snapshots[0]
+    prev = snapshots[1] if len(snapshots) > 1 else None
+
+    # トレンド（前回比）を計算
     total_trend = "+0%"
+    total_diff = "+¥0"
     holding_trend = "+0"
     yield_trend = "+0%"
 
     if prev:
-        # 総資産の増減率
+        # 総資産の増減率と金額差分
+        diff_val = latest.total_assets - prev.total_assets
+        total_diff = f"{'+' if diff_val >= 0 else ''}¥{diff_val:,.0f}"
+
         if prev.total_assets > 0:
-            pct = ((latest.total_assets - prev.total_assets) / prev.total_assets) * 100
+            pct = (diff_val / prev.total_assets) * 100
             total_trend = f"{'+' if pct >= 0 else ''}{pct:.1f}%"
 
         # 保有銘柄数の増減
@@ -678,13 +731,14 @@ async def get_dashboard_stats(db: AsyncSession = Depends(get_db)):
         holding_trend = f"{'+' if holding_diff >= 0 else ''}{holding_diff}銘柄"
 
         # 利回りの増減
-        if prev.yield_rate and latest.yield_rate:
+        if prev.yield_rate is not None and latest.yield_rate is not None:
             yield_diff = latest.yield_rate - prev.yield_rate
             yield_trend = f"{'+' if yield_diff >= 0 else ''}{yield_diff:.2f}%"
 
     return DashboardStats(
         total_assets=latest.total_assets,
         total_assets_trend=total_trend,
+        total_assets_diff=total_diff,
         holding_count=latest.holding_count,
         holding_count_trend=holding_trend,
         yield_rate=latest.yield_rate,
