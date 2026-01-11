@@ -19,7 +19,7 @@
 ### 3.1 ネットワークセキュリティ
 - **Multi-AZ構成**:
   - ap-northeast-1a と ap-northeast-1c の2つのAZに分散配置し、高可用性を確保。
-  - 各AZにPublic/Private Subnetを配置。
+  - Public SubnetにALBを配置し、各AZのPrivate Subnetに負荷分散。
 - **VPC設計**:
   - **Public Subnet**: ALBのみを配置（NAT Gatewayは不要のため削除）。
   - **Private Subnet (App)**: ECSタスクを配置。直接のインターネット接続を遮断。
