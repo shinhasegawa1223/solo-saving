@@ -9,6 +9,11 @@ Docker を使用して環境構築されているため、ローカルに `bun` 
 | --- | --- |
 | ![Dark Mode](images/dark.png) | ![Light Mode](images/white.png) |
 
+## 🏗️ アーキテクチャ
+
+![AWS Architecture](docs/images/aws_architecture.png)
+*※ 構成図の元ファイル: [`docs/aws_architecture.drawio`](docs/aws_architecture.drawio)*
+
 ## 🛠 技術スタック
 
 - **Frontend**: Next.js (App Router), Bun, Biome, Tailwind CSS, Recharts
@@ -89,6 +94,8 @@ docker compose down
 
 - [**CI/CD Workflow**](docs/ci-cd-workflow.md)
   - CI/CDパイプラインの詳細とワークフローについて解説しています。
+- [**アーキテクチャ仕様書**](docs/architecture_spec.md)
+  - AWSインフラ構成、セキュリティ設計、Multi-AZ構成について記載しています。
 - [**Git運用ルール**](docs/git.md)
   - コミットメッセージの規約やブランチ戦略について記載しています。
 - [**RLS Decision**](docs/rls-decision.md)
@@ -97,3 +104,5 @@ docker compose down
   - 採用した技術スタックと、比較検討した他の技術についての詳細です。
 - [**IDE選定**](docs/ide-selection.md)
   - Google Antigravityを採用した理由と、コストメリット（3ヶ月950円等）について記載しています。
+- [**購入フロー仕様書**](docs/purchase-flow-specification.md)
+  - 資産購入・売却フローの仕様、API設計について記載しています。
