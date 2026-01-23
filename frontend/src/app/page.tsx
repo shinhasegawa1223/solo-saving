@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import {
   AssetTrendsSection,
   Footer,
@@ -11,7 +11,11 @@ import {
   StatsCard,
 } from "@/components";
 import { formatCurrency } from "@/config";
-import { type DashboardAllData, getDashboardAllData } from "@/lib/api";
+import {
+  type DashboardAllData,
+  getDashboardAllData,
+  refreshAssets,
+} from "@/lib/api";
 
 // スクロール処理を担当するコンポーネント
 function ScrollHandler() {
@@ -42,21 +46,41 @@ function DashboardContent() {
   const [data, setData] = useState<DashboardAllData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const fetchAllData = useCallback(async () => {
+    try {
+      // 全データを並列取得
+      const allData = await getDashboardAllData("month");
+      setData(allData);
+    } catch (err) {
+      console.error("Failed to fetch dashboard data:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
-    const fetchAllData = async () => {
+    // 1. まず既存データを即時表示
+    fetchAllData();
+
+    const init = async () => {
       try {
-        // 全データを並列取得
+        // 2. バックグラウンドで市場価格更新
+        await refreshAssets();
+        // 3. 更新完了後にデータを再取得（サイレント更新）
+        // isLoadingセットせずにデータだけ更新
         const allData = await getDashboardAllData("month");
         setData(allData);
-      } catch (err) {
-        console.error("Failed to fetch dashboard data:", err);
-      } finally {
-        setIsLoading(false);
+      } catch (e) {
+        console.warn("Market update failed:", e);
       }
     };
+    init();
+  }, [fetchAllData]);
 
-    fetchAllData();
-  }, []);
+  // データ再取得用のコールバック
+  const handleAssetChange = async () => {
+    await fetchAllData();
+  };
 
   // 全体ローディング状態
   if (isLoading) {
@@ -123,13 +147,21 @@ function DashboardContent() {
       </section>
 
       {/* 目標設定プログレス */}
-      <ProgressBarHero initialGoal={goals[0] || null} />
+      <ProgressBarHero
+        initialGoal={goals[0] || null}
+        onAssetChange={handleAssetChange}
+        currentTotalAssets={Number(stats.total_assets)}
+      />
 
       {/* チャートセクション */}
       <AssetTrendsSection initialData={chartData} />
 
       {/* ポートフォリオ構成（円グラフ） */}
-      <PortfolioSection initialPortfolio={portfolio} initialAssets={assets} />
+      <PortfolioSection
+        initialPortfolio={portfolio}
+        initialAssets={assets}
+        onAssetChange={handleAssetChange}
+      />
     </main>
   );
 }

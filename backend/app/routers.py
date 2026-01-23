@@ -9,7 +9,7 @@ Solo Saving API ルーター
 - ダッシュボード: 統計情報とポートフォリオ
 """
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Literal
 from uuid import UUID
@@ -25,11 +25,13 @@ from app.schemas import (
     AssetCategoryResponse,
     AssetCreate,
     AssetHistoryChartData,
+    AssetPurchaseRequest,
     AssetResponse,
     AssetSnapshotChartData,
     AssetSnapshotCreate,
     AssetSnapshotResponse,
     AssetUpdate,
+    CashTransactionRequest,
     DashboardStats,
     PortfolioItem,
     SavingsGoalCreate,
@@ -102,6 +104,134 @@ async def get_assets(
     query = query.order_by(Asset.created_at.desc())
     result = await db.execute(query)
     return result.scalars().all()
+
+
+@assets_router.post(
+    "/purchase",
+    response_model=AssetResponse,
+    status_code=201,
+    summary="株購入",
+    description="株を購入し、資産として登録または追加購入を処理します。",
+)
+async def purchase_asset(
+    purchase_data: AssetPurchaseRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    株を購入。
+
+    既存銘柄の場合は数量と平均取得単価を更新。
+    新規銘柄の場合は新しい資産として登録。
+
+    Args:
+        purchase_data: 購入データ
+
+    Returns:
+        作成/更新された資産情報
+    """
+    asset_ticker = purchase_data.ticker_symbol
+
+    # 既存の資産を検索（ティッカーシンボルで照合）
+    result = await db.execute(
+        select(Asset)
+        .options(selectinload(Asset.category))
+        .where(Asset.ticker_symbol == asset_ticker)
+    )
+    existing_asset = result.scalar_one_or_none()
+
+    # 日本円換算の単価を計算（2桁に丸める）
+    price_in_jpy = purchase_data.purchase_price
+    if purchase_data.usd_jpy_rate:
+        price_in_jpy = (purchase_data.purchase_price * purchase_data.usd_jpy_rate).quantize(
+            Decimal("0.01")
+        )
+    else:
+        price_in_jpy = price_in_jpy.quantize(Decimal("0.01"))
+
+    # 現在評価額（円）- 2桁に丸める
+    current_value_jpy = (purchase_data.quantity * price_in_jpy).quantize(Decimal("0.01"))
+    total_purchase_cost = current_value_jpy
+
+    # 現金から差し引き
+    # 現金カテゴリID = 4 (CASH_CATEGORY_ID)
+    CASH_CATEGORY_ID = 4
+    cash_result = await db.execute(select(Asset).where(Asset.category_id == CASH_CATEGORY_ID))
+    cash_asset = cash_result.scalar_one_or_none()
+
+    if not cash_asset or cash_asset.quantity < total_purchase_cost:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"現金残高が不足しています。必要額: ¥{total_purchase_cost:,.0f}, "
+                f"残高: ¥{cash_asset.quantity if cash_asset else 0:,.0f}"
+            ),
+        )
+
+    cash_asset.quantity = (cash_asset.quantity - total_purchase_cost).quantize(Decimal("0.01"))
+    cash_asset.current_value = cash_asset.quantity
+    # 現金の更新は後ほどまとめてcommitされる
+
+    if existing_asset:
+        # 追加購入: 平均取得単価を再計算
+        old_quantity = existing_asset.quantity
+        old_avg_cost = existing_asset.average_cost or Decimal("0")
+        new_quantity = purchase_data.quantity
+
+        # 平均取得単価の計算（すべて円ベース）
+        # 新しい平均取得単価 = (旧数量×旧単価 + 新数量×新単価) / (旧数量 + 新数量)
+        total_quantity = old_quantity + new_quantity
+        if total_quantity > 0:
+            new_avg_cost = (
+                (old_quantity * old_avg_cost) + (new_quantity * price_in_jpy)
+            ) / total_quantity
+            new_avg_cost = new_avg_cost.quantize(Decimal("0.01"))
+        else:
+            new_avg_cost = price_in_jpy
+
+        total_current_value = (total_quantity * price_in_jpy).quantize(Decimal("0.01"))
+
+        existing_asset.quantity = total_quantity
+        existing_asset.average_cost = new_avg_cost
+        existing_asset.current_price = price_in_jpy
+        existing_asset.current_value = total_current_value
+
+        # 通貨情報は既存のものを維持（または更新？）
+        # 米国株カテゴリの場合でも、amount系フィールドが円表記なら currency="JPY" にすべきか？
+        # 現状は purchase_data.currency を優先する実装になっていたが、
+        # 値を円にするなら currency も JPY にすべきかもしれないが、
+        # 「米国株」であることを示すために USD のままにする（値だけ円換算）運用と仮定
+        if purchase_data.currency:
+            existing_asset.currency = purchase_data.currency
+
+        await db.commit()
+        # カテゴリを含めて再取得
+        result = await db.execute(
+            select(Asset).options(selectinload(Asset.category)).where(Asset.id == existing_asset.id)
+        )
+        return result.scalar_one()
+    else:
+        # 新規購入: 新しい資産として作成
+        new_asset = Asset(
+            category_id=purchase_data.category_id,
+            name=purchase_data.name,
+            ticker_symbol=purchase_data.ticker_symbol,
+            quantity=purchase_data.quantity,
+            # 円換算した値を保存
+            average_cost=price_in_jpy,
+            current_price=price_in_jpy,
+            current_value=current_value_jpy,
+            currency=purchase_data.currency,
+            created_at=datetime.combine(purchase_data.purchase_date, datetime.min.time())
+            if purchase_data.purchase_date
+            else datetime.now(),
+        )
+        db.add(new_asset)
+        await db.commit()
+        # カテゴリを含めて再取得
+        result = await db.execute(
+            select(Asset).options(selectinload(Asset.category)).where(Asset.id == new_asset.id)
+        )
+        return result.scalar_one()
 
 
 @assets_router.get(
@@ -361,6 +491,32 @@ async def get_chart_data(
     """
     today = date.today()
 
+    # リアルタイム総資産を集計 (現在時点のデータを追加するため)
+    assets_result = await db.execute(select(Asset))
+    current_assets = assets_result.scalars().all()
+
+    current_totals = {
+        1: Decimal("0"),  # japanese_stocks
+        2: Decimal("0"),  # us_stocks
+        3: Decimal("0"),  # investment_trusts
+        4: Decimal("0"),  # cash
+    }
+
+    for asset in current_assets:
+        if asset.category_id in current_totals:
+            current_totals[asset.category_id] += asset.current_value or Decimal("0")
+
+    total_current = sum(current_totals.values())
+
+    current_chart_data = AssetSnapshotChartData(
+        date=today.strftime("%m/%d"),  # default for day
+        日本株=current_totals[1],
+        米国株=current_totals[2],
+        投資信託=current_totals[3],
+        現金=current_totals[4],
+        合計=total_current,
+    )
+
     if period == "day":
         # 日次データ - 直近30日
         start_date = today - timedelta(days=30)
@@ -372,7 +528,7 @@ async def get_chart_data(
         result = await db.execute(query)
         snapshots = result.scalars().all()
 
-        return [
+        data = [
             AssetSnapshotChartData(
                 date=s.snapshot_date.strftime("%m/%d"),
                 日本株=s.japanese_stocks,
@@ -383,6 +539,15 @@ async def get_chart_data(
             )
             for s in snapshots
         ]
+
+        # 今日の日付のデータがあれば置換、なければ追加
+        current_date_str = today.strftime("%m/%d")
+        if data and data[-1].date == current_date_str:
+            data[-1] = current_chart_data
+        else:
+            data.append(current_chart_data)
+
+        return data[-30:]  # 最新30件
 
     elif period == "month":
         # 月次データ - 直近12ヶ月の月末データ
@@ -402,7 +567,7 @@ async def get_chart_data(
                 monthly_data[month_key] = s
 
         sorted_months = sorted(monthly_data.keys())
-        return [
+        data = [
             AssetSnapshotChartData(
                 date=f"{int(monthly_data[m].snapshot_date.month)}月",
                 日本株=monthly_data[m].japanese_stocks,
@@ -411,8 +576,20 @@ async def get_chart_data(
                 現金=monthly_data[m].cash,
                 合計=monthly_data[m].total_assets,
             )
-            for m in sorted_months[-12:]
+            for m in sorted_months
         ]
+
+        # 今月のデータとして現在の値を採用
+        current_month_label = f"{today.month}月"
+        current_chart_data.date = current_month_label
+
+        # 最後のデータが今月なら置換（または未確定として追加）
+        if data and data[-1].date == current_month_label:
+            data[-1] = current_chart_data
+        else:
+            data.append(current_chart_data)
+
+        return data[-12:]
 
     else:  # year
         # 年次データ - 直近5年の年末データ
@@ -429,7 +606,7 @@ async def get_chart_data(
                 yearly_data[year] = s
 
         sorted_years = sorted(yearly_data.keys())
-        return [
+        data = [
             AssetSnapshotChartData(
                 date=str(year),
                 日本株=yearly_data[year].japanese_stocks,
@@ -438,8 +615,19 @@ async def get_chart_data(
                 現金=yearly_data[year].cash,
                 合計=yearly_data[year].total_assets,
             )
-            for year in sorted_years[-5:]
+            for year in sorted_years
         ]
+
+        # 今年のデータとして現在の値を採用
+        current_year_label = str(today.year)
+        current_chart_data.date = current_year_label
+
+        if data and data[-1].date == current_year_label:
+            data[-1] = current_chart_data
+        else:
+            data.append(current_chart_data)
+
+        return data[-5:]
 
 
 @snapshots_router.post(
@@ -690,58 +878,71 @@ async def get_dashboard_stats(db: AsyncSession = Depends(get_db)):
     Returns:
         統計情報
     """
-    # 最新のスナップショットとその1つ前を取得
+    # リアルタイム総資産を集計
+    assets_result = await db.execute(select(Asset))
+    all_assets = assets_result.scalars().all()
+
+    total_assets = sum((a.current_value or Decimal("0")) for a in all_assets)
+    holding_count = len([a for a in all_assets if a.category_id != 4])  # 現金以外
+
+    # 比較対象として最新のスナップショット（昨日以前のデータとして扱う）を取得
+    # ※理想的には昨日のスナップショットだが、最新があればそれと比較
     snapshots_result = await db.execute(
-        select(AssetSnapshot).order_by(AssetSnapshot.snapshot_date.desc()).limit(2)
+        select(AssetSnapshot).order_by(AssetSnapshot.snapshot_date.desc()).limit(1)
     )
-    snapshots = snapshots_result.scalars().all()
-
-    # データがない場合のデフォルト値
-    if not snapshots:
-        return DashboardStats(
-            total_assets=Decimal("0"),
-            total_assets_trend="+0%",
-            total_assets_diff="+¥0",
-            holding_count=0,
-            holding_count_trend="+0",
-            yield_rate=None,
-            yield_rate_trend="+0%",
-        )
-
-    latest = snapshots[0]
-    prev = snapshots[1] if len(snapshots) > 1 else None
+    prev_snapshot = snapshots_result.scalar_one_or_none()
 
     # トレンド（前回比）を計算
     total_trend = "+0%"
     total_diff = "+¥0"
-    holding_trend = "+0"
+    holding_trend = "+0銘柄"
     yield_trend = "+0%"
+    yield_rate = None
 
-    if prev:
+    if prev_snapshot:
         # 総資産の増減率と金額差分
-        diff_val = latest.total_assets - prev.total_assets
+        diff_val = total_assets - prev_snapshot.total_assets
         total_diff = f"{'+' if diff_val >= 0 else ''}¥{diff_val:,.0f}"
 
-        if prev.total_assets > 0:
-            pct = (diff_val / prev.total_assets) * 100
+        if prev_snapshot.total_assets > 0:
+            pct = (diff_val / prev_snapshot.total_assets) * 100
             total_trend = f"{'+' if pct >= 0 else ''}{pct:.1f}%"
 
         # 保有銘柄数の増減
-        holding_diff = latest.holding_count - prev.holding_count
+        holding_diff = holding_count - prev_snapshot.holding_count
         holding_trend = f"{'+' if holding_diff >= 0 else ''}{holding_diff}銘柄"
 
-        # 利回りの増減
-        if prev.yield_rate is not None and latest.yield_rate is not None:
-            yield_diff = latest.yield_rate - prev.yield_rate
-            yield_trend = f"{'+' if yield_diff >= 0 else ''}{yield_diff:.2f}%"
+        # 利回りを計算
+        # 総投資額（average_cost * quantity）を算出
+        # 現金(category_id=4)は投資額に含めない、または投資額=評価額とする
+        # ここでは「投資パフォーマンス」を見るため、現金以外の資産で計算するのが一般的だが、
+        # 全体資産の利回りなら現金も含める場合もある。
+        # ユーザー要望は「利回り」なので、投資信託や株のパフォーマンス（含み益/投資額）を表示する。
+
+        investment_assets = [a for a in all_assets if a.category_id != 4]
+        total_investment = sum(
+            (a.average_cost or Decimal("0")) * a.quantity for a in investment_assets
+        )
+        total_current_value = sum((a.current_value or Decimal("0")) for a in investment_assets)
+
+        if total_investment > 0:
+            yield_rate = ((total_current_value - total_investment) / total_investment) * 100
+            yield_rate = yield_rate.quantize(Decimal("0.01"))
+        else:
+            yield_rate = Decimal("0.00")
+
+        # トレンド比較（前回比）
+        if prev_snapshot and prev_snapshot.yield_rate is not None:
+            diff_yield = yield_rate - prev_snapshot.yield_rate
+            yield_trend = f"{'+' if diff_yield >= 0 else ''}{diff_yield:.2f}%"
 
     return DashboardStats(
-        total_assets=latest.total_assets,
+        total_assets=total_assets,
         total_assets_trend=total_trend,
         total_assets_diff=total_diff,
-        holding_count=latest.holding_count,
+        holding_count=holding_count,
         holding_count_trend=holding_trend,
-        yield_rate=latest.yield_rate,
+        yield_rate=yield_rate,
         yield_rate_trend=yield_trend,
     )
 
@@ -761,16 +962,28 @@ async def get_portfolio(db: AsyncSession = Depends(get_db)):
     Returns:
         ポートフォリオアイテムのリスト（名前、金額、割合、色、アイコン）
     """
-    # 最新のスナップショットを取得
-    result = await db.execute(
-        select(AssetSnapshot).order_by(AssetSnapshot.snapshot_date.desc()).limit(1)
-    )
-    snapshot = result.scalar_one_or_none()
+    # リアルタイム資産を取得
+    assets_result = await db.execute(select(Asset).options(selectinload(Asset.category)))
+    assets = assets_result.scalars().all()
 
-    if not snapshot:
-        return []
+    # カテゴリごとに集計
+    category_totals: dict[str, Decimal] = {
+        "japanese_stocks": Decimal("0"),
+        "us_stocks": Decimal("0"),
+        "investment_trusts": Decimal("0"),
+        "cash": Decimal("0"),
+    }
 
-    total = snapshot.total_assets
+    # カテゴリIDマッピング (DBのIDとカテゴリ名の対応)
+    # 1: 日本株, 2: 米国株, 3: 投資信託, 4: 現金
+    id_map = {1: "japanese_stocks", 2: "us_stocks", 3: "investment_trusts", 4: "cash"}
+
+    for asset in assets:
+        cat_key = id_map.get(asset.category_id)
+        if cat_key:
+            category_totals[cat_key] += asset.current_value or Decimal("0")
+
+    total = sum(category_totals.values())
     if total == 0:
         return []
 
@@ -782,29 +995,29 @@ async def get_portfolio(db: AsyncSession = Depends(get_db)):
     portfolio = [
         PortfolioItem(
             name="日本株",
-            value=snapshot.japanese_stocks,
-            percentage=(snapshot.japanese_stocks / total) * 100,
+            value=category_totals["japanese_stocks"],
+            percentage=(category_totals["japanese_stocks"] / total) * 100,
             color=categories.get("japanese_stocks", AssetCategory(color="indigo")).color,
             icon=categories.get("japanese_stocks", AssetCategory(icon="Building2")).icon,
         ),
         PortfolioItem(
             name="米国株",
-            value=snapshot.us_stocks,
-            percentage=(snapshot.us_stocks / total) * 100,
+            value=category_totals["us_stocks"],
+            percentage=(category_totals["us_stocks"] / total) * 100,
             color=categories.get("us_stocks", AssetCategory(color="amber")).color,
             icon=categories.get("us_stocks", AssetCategory(icon="Globe")).icon,
         ),
         PortfolioItem(
             name="投資信託",
-            value=snapshot.investment_trusts,
-            percentage=(snapshot.investment_trusts / total) * 100,
+            value=category_totals["investment_trusts"],
+            percentage=(category_totals["investment_trusts"] / total) * 100,
             color=categories.get("investment_trusts", AssetCategory(color="emerald")).color,
             icon=categories.get("investment_trusts", AssetCategory(icon="TrendingUp")).icon,
         ),
         PortfolioItem(
             name="現金",
-            value=snapshot.cash,
-            percentage=(snapshot.cash / total) * 100,
+            value=category_totals["cash"],
+            percentage=(category_totals["cash"] / total) * 100,
             color=categories.get("cash", AssetCategory(color="slate")).color,
             icon=categories.get("cash", AssetCategory(icon="Wallet")).icon,
         ),
@@ -812,3 +1025,211 @@ async def get_portfolio(db: AsyncSession = Depends(get_db)):
 
     # 金額が0より大きいもののみ返す
     return [p for p in portfolio if p.value > 0]
+
+
+# ============================================
+# 現金管理 ルーター
+# 入金・出金の処理
+# ============================================
+cash_router = APIRouter(
+    prefix="/api/cash",
+    tags=["現金管理"],
+)
+
+# 現金カテゴリID
+CASH_CATEGORY_ID = 4
+
+
+@cash_router.post(
+    "/transaction",
+    response_model=AssetResponse,
+    status_code=200,
+    summary="現金入出金",
+    description="現金の入金または出金を処理します。",
+)
+async def cash_transaction(
+    transaction: CashTransactionRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    現金の入出金を処理。
+
+    Args:
+        transaction: 入出金データ（amount, transaction_type）
+
+    Returns:
+        更新された現金資産情報
+    """
+    # 現金資産を取得または作成
+    result = await db.execute(
+        select(Asset)
+        .options(selectinload(Asset.category))
+        .where(Asset.category_id == CASH_CATEGORY_ID)
+    )
+    cash_asset = result.scalar_one_or_none()
+
+    amount = transaction.amount.quantize(Decimal("0.01"))
+
+    if transaction.transaction_type == "deposit":
+        # 入金
+        if cash_asset:
+            cash_asset.quantity = (cash_asset.quantity + amount).quantize(Decimal("0.01"))
+            cash_asset.current_value = cash_asset.quantity
+        else:
+            # 現金資産が存在しない場合は作成
+            cash_asset = Asset(
+                category_id=CASH_CATEGORY_ID,
+                name="現金",
+                ticker_symbol=None,
+                quantity=amount,
+                average_cost=Decimal("1"),
+                current_price=Decimal("1"),
+                current_value=amount,
+                currency="JPY",
+            )
+            db.add(cash_asset)
+    elif transaction.transaction_type == "withdraw":
+        # 出金
+        if not cash_asset or cash_asset.quantity < amount:
+            raise HTTPException(
+                detail=(
+                    f"残高不足です。現在の残高: ¥{cash_asset.quantity if cash_asset else 0:,.0f}"
+                ),
+            )
+        cash_asset.quantity = (cash_asset.quantity - amount).quantize(Decimal("0.01"))
+        cash_asset.current_value = cash_asset.quantity
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail="transaction_type は 'deposit' または 'withdraw' を指定してください",
+        )
+
+    await db.commit()
+
+    # 再取得してレスポンス
+    result = await db.execute(
+        select(Asset).options(selectinload(Asset.category)).where(Asset.id == cash_asset.id)
+    )
+    return result.scalar_one()
+
+
+@cash_router.get(
+    "/balance",
+    response_model=dict,
+    summary="現金残高取得",
+    description="現在の現金残高を取得します。",
+)
+async def get_cash_balance(db: AsyncSession = Depends(get_db)):
+    """
+    現金残高を取得。
+
+    Returns:
+        現金残高
+    """
+    result = await db.execute(select(Asset).where(Asset.category_id == CASH_CATEGORY_ID))
+    cash_asset = result.scalar_one_or_none()
+
+    balance = cash_asset.quantity if cash_asset else Decimal("0")
+    return {"balance": balance, "currency": "JPY"}
+
+
+@assets_router.post(
+    "/refresh",
+    summary="資産価格更新",
+    description="外部API(yfinance)から最新の株価・為替を取得し、すべての資産の評価額を更新します。",
+)
+async def refresh_asset_prices(db: AsyncSession = Depends(get_db)):
+    """
+    全資産の価格を再取得して更新する。
+    """
+    import asyncio
+
+    import yfinance as yf
+
+    # 全資産取得
+    result = await db.execute(select(Asset))
+    assets = result.scalars().all()
+
+    if not assets:
+        return {"message": "No assets to update", "updated_count": 0}
+
+    # カテゴリごとに分類
+    us_assets = [a for a in assets if a.category_id == 2 and a.ticker_symbol]
+    jp_assets = [a for a in assets if a.category_id == 1 and a.ticker_symbol]
+
+    # データ取得用の同期関数（yfinanceは同期I/Oを行うため別スレッドで実行）
+    def fetch_market_data():
+        updated_data = {}  # {ticker: {price_type: 'USD'|'JPY', price: Decimal, rate: Decimal}}
+
+        # 1. 為替レート取得
+        try:
+            usdjpy_ticker = yf.Ticker("USDJPY=X")
+            try:
+                usdjpy_rate = Decimal(str(usdjpy_ticker.fast_info.last_price))
+            except Exception:
+                hist = usdjpy_ticker.history(period="1d")
+                if not hist.empty:
+                    usdjpy_rate = Decimal(str(hist["Close"].iloc[-1]))
+                else:
+                    usdjpy_rate = Decimal("150.0")
+        except Exception:
+            usdjpy_rate = Decimal("150.0")
+
+        # 2. 米国株
+        for asset in us_assets:
+            try:
+                t = yf.Ticker(asset.ticker_symbol)
+                price_usd = Decimal(str(t.fast_info.last_price))
+                updated_data[asset.ticker_symbol] = {
+                    "price": price_usd,
+                    "currency": "USD",
+                    "rate": usdjpy_rate,
+                }
+            except Exception as e:
+                print(f"Failed to fetch US stock {asset.ticker_symbol}: {e}")
+
+        # 3. 日本株
+        for asset in jp_assets:
+            try:
+                sym = asset.ticker_symbol
+                if not sym.endswith(".T"):
+                    sym += ".T"
+                t = yf.Ticker(sym)
+                price_jpy = Decimal(str(t.fast_info.last_price))
+                updated_data[asset.ticker_symbol] = {
+                    "price": price_jpy,
+                    "currency": "JPY",
+                    "rate": Decimal("1.0"),
+                }
+            except Exception as e:
+                print(f"Failed to fetch JP stock {asset.ticker_symbol}: {e}")
+
+        return updated_data, usdjpy_rate
+
+    # スレッドプールで実行（メインループをブロックしない）
+    loop = asyncio.get_event_loop()
+    market_data, current_rate = await loop.run_in_executor(None, fetch_market_data)
+
+    # DB更新
+    updated_count = 0
+    for asset in assets:
+        if not asset.ticker_symbol:
+            continue
+
+        data = market_data.get(asset.ticker_symbol)
+        if data:
+            if data["currency"] == "USD":
+                asset.current_price = (data["price"] * data["rate"]).quantize(Decimal("0.01"))
+            else:
+                asset.current_price = data["price"].quantize(Decimal("0.01"))
+
+            asset.current_value = (asset.current_price * asset.quantity).quantize(Decimal("0.01"))
+            updated_count += 1
+
+    await db.commit()
+
+    return {
+        "message": "Assets updated successfully",
+        "updated_count": updated_count,
+        "usd_jpy_rate": current_rate,
+    }

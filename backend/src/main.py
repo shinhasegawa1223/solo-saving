@@ -9,11 +9,13 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.routers import (
     assets_router,
+    cash_router,
     categories_router,
     dashboard_router,
     goals_router,
     snapshots_router,
 )
+from app.stock_router import stock_router
 
 # ==============================================
 # FastAPI アプリケーション設定
@@ -90,6 +92,8 @@ app.include_router(assets_router)
 app.include_router(snapshots_router)
 app.include_router(goals_router)
 app.include_router(dashboard_router)
+app.include_router(stock_router)
+app.include_router(cash_router)
 
 
 # ==============================================

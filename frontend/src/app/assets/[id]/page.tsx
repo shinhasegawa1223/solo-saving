@@ -12,6 +12,7 @@ import {
   type AssetHistoryData,
   getAsset,
   getAssetHistory,
+  refreshAssets,
 } from "@/lib/api";
 
 // 簡易版AreaChart（銘柄詳細用）
@@ -159,17 +160,31 @@ export default function AssetDetailPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        setIsLoading(true);
-        const [assetData, historyData] = await Promise.all([
+        // 1. まず既存データを即時表示
+        const [initialAsset, initialHistory] = await Promise.all([
           getAsset(assetId),
           getAssetHistory(assetId, 30),
         ]);
-        setAsset(assetData);
-        setHistory(historyData);
+        setAsset(initialAsset);
+        setHistory(initialHistory);
+        setIsLoading(false);
+
+        // 2. バックグラウンドで市場価格更新
+        try {
+          await refreshAssets();
+          // 3. 更新完了後に再取得
+          const [updatedAsset, updatedHistory] = await Promise.all([
+            getAsset(assetId),
+            getAssetHistory(assetId, 30),
+          ]);
+          setAsset(updatedAsset);
+          setHistory(updatedHistory);
+        } catch (e) {
+          console.warn("Market update failed:", e);
+        }
       } catch (err) {
         console.error("Failed to fetch asset:", err);
         setError("資産情報の取得に失敗しました");
-      } finally {
         setIsLoading(false);
       }
     };
@@ -277,21 +292,30 @@ export default function AssetDetailPage() {
               {profitLoss && (
                 <div
                   className={`flex items-center justify-end gap-1 mt-1 ${
-                    profitLoss.profit >= 0 ? "text-emerald-500" : "text-red-500"
+                    profitLoss.percentage === 0
+                      ? "text-gray-500"
+                      : profitLoss.profit >= 0
+                        ? "text-emerald-500"
+                        : "text-red-500"
                   }`}
                 >
-                  {profitLoss.profit >= 0 ? (
-                    <TrendingUp className="w-4 h-4" />
-                  ) : (
-                    <TrendingDown className="w-4 h-4" />
-                  )}
+                  {profitLoss.percentage !== 0 &&
+                    (profitLoss.profit >= 0 ? (
+                      <TrendingUp className="w-4 h-4" />
+                    ) : (
+                      <TrendingDown className="w-4 h-4" />
+                    ))}
                   <span className="font-medium">
-                    {profitLoss.profit >= 0 ? "+" : ""}
-                    {formatCurrency(profitLoss.profit)}
+                    {profitLoss.percentage === 0
+                      ? "±0"
+                      : `${profitLoss.profit >= 0 ? "+" : ""}${formatCurrency(
+                          profitLoss.profit
+                        )}`}
                   </span>
                   <span className="text-sm">
-                    ({profitLoss.percentage >= 0 ? "+" : ""}
-                    {profitLoss.percentage.toFixed(2)}%)
+                    {profitLoss.percentage === 0
+                      ? "-"
+                      : `(${profitLoss.percentage >= 0 ? "+" : ""}${profitLoss.percentage.toFixed(2)}%)`}
                   </span>
                 </div>
               )}

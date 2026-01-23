@@ -19,6 +19,7 @@ async function fetchApi<T>(
       ...options?.headers,
     },
     ...options,
+    cache: "no-store",
   });
 
   if (!response.ok) {
@@ -122,6 +123,18 @@ export async function getPortfolio(): Promise<PortfolioItem[]> {
  */
 export async function getDashboardStats(): Promise<DashboardStats> {
   return fetchApi<DashboardStats>("/api/dashboard/stats");
+}
+
+/**
+ * 貯金目標を作成
+ */
+export async function createGoal(
+  data: Pick<SavingsGoal, "label" | "target_amount" | "current_amount">
+): Promise<SavingsGoal> {
+  return fetchApi<SavingsGoal>("/api/goals", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
 }
 
 /**
@@ -249,4 +262,76 @@ export async function getAssetHistory(
   return fetchApi<AssetHistoryData[]>(
     `/api/assets/${assetId}/history?days=${days}`
   );
+}
+
+/**
+ * 資産価格を更新（最新の市場価格を取得）
+ */
+export async function refreshAssets(): Promise<{
+  message: string;
+  updated_count: number;
+  usd_jpy_rate: number;
+}> {
+  return fetchApi("/api/assets/refresh", {
+    method: "POST",
+  });
+}
+
+// ============================================
+// 現金管理関連
+// ============================================
+
+/** 現金入出金リクエスト */
+export interface CashTransactionRequest {
+  amount: number;
+  transaction_type: "deposit" | "withdraw";
+  note?: string;
+}
+
+/**
+ * 現金を入金
+ * @param amount - 金額
+ * @param note - メモ（任意）
+ */
+export async function depositCash(
+  amount: number,
+  note?: string
+): Promise<Asset> {
+  return fetchApi<Asset>("/api/cash/transaction", {
+    method: "POST",
+    body: JSON.stringify({
+      amount,
+      transaction_type: "deposit",
+      note,
+    } as CashTransactionRequest),
+  });
+}
+
+/**
+ * 現金を出金
+ * @param amount - 金額
+ * @param note - メモ（任意）
+ */
+export async function withdrawCash(
+  amount: number,
+  note?: string
+): Promise<Asset> {
+  return fetchApi<Asset>("/api/cash/transaction", {
+    method: "POST",
+    body: JSON.stringify({
+      amount,
+      transaction_type: "withdraw",
+      note,
+    } as CashTransactionRequest),
+  });
+}
+
+/**
+ * 現金残高を取得
+ */
+export async function getCashBalance(): Promise<{
+  balance: number;
+  currency: string;
+}> {
+  return fetchApi<{ balance: number; currency: string }>("/api/cash/balance");
 }

@@ -1,51 +1,65 @@
 "use client";
 
+import { Wallet } from "lucide-react";
 import { useEffect, useState } from "react";
-import { ProgressBar } from "@/components";
+import { CashManagementModal, ProgressBar } from "@/components";
 import { appConfig } from "@/config";
-import { getGoals, type SavingsGoal, updateGoal } from "@/lib/api";
+import { createGoal, getGoals, type SavingsGoal, updateGoal } from "@/lib/api";
 import { formatCurrency, formatShortCurrency } from "@/lib/formatters";
 
 interface ProgressBarHeroProps {
   className?: string;
   initialGoal?: SavingsGoal | null;
+  onAssetChange?: () => void;
+  currentTotalAssets?: number;
 }
 
 export const ProgressBarHero = ({
   className,
   initialGoal,
+  onAssetChange,
+  currentTotalAssets,
 }: ProgressBarHeroProps) => {
   const [goal, setGoal] = useState<SavingsGoal | null>(initialGoal || null);
   const [isLoading, setIsLoading] = useState(!initialGoal);
   const [isEditing, setIsEditing] = useState(false);
   const [editTarget, setEditTarget] = useState("");
-  const [editCurrent, setEditCurrent] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isCashModalOpen, setIsCashModalOpen] = useState(false);
 
   // フォールバック値（API がエラーの場合に使用）
   const fallbackTarget = appConfig.savingsGoal.targetAmount;
-  const fallbackCurrent = appConfig.savingsGoal.currentAmount;
   const fallbackLabel = appConfig.savingsGoal.label;
 
   // 表示用の値
   const target = goal ? Number(goal.target_amount) : fallbackTarget;
-  const current = goal ? Number(goal.current_amount) : fallbackCurrent;
+
+  // currentTotalAssets があれば優先して使用
+  const current =
+    currentTotalAssets !== undefined
+      ? currentTotalAssets
+      : goal
+        ? Number(goal.current_amount)
+        : appConfig.savingsGoal.currentAmount;
+
   const targetLabel = goal ? goal.label : fallbackLabel;
 
   // 編集フォームの初期値を設定
   useEffect(() => {
     if (goal) {
       setEditTarget(goal.target_amount.toString());
-      setEditCurrent(goal.current_amount.toString());
     } else {
       setEditTarget(fallbackTarget.toString());
-      setEditCurrent(fallbackCurrent.toString());
     }
-  }, [goal, fallbackTarget, fallbackCurrent]);
+  }, [goal, fallbackTarget]);
 
   // initialGoalがない場合のみAPIから取得
   useEffect(() => {
-    if (initialGoal !== undefined) return; // propsで渡された場合はスキップ
+    if (initialGoal !== undefined) {
+      setGoal(initialGoal);
+      setIsLoading(false);
+      return;
+    }
 
     const fetchGoals = async () => {
       setIsLoading(true);
@@ -69,19 +83,27 @@ export const ProgressBarHero = ({
 
   const handleSave = async () => {
     const newTarget = Number.parseInt(editTarget.replace(/,/g, ""), 10);
-    const newCurrent = Number.parseInt(editCurrent.replace(/,/g, ""), 10);
 
     if (Number.isNaN(newTarget) || newTarget <= 0) return;
-    if (Number.isNaN(newCurrent) || newCurrent < 0) return;
 
     setIsSaving(true);
     try {
       if (goal) {
+        // current_amount は更新しない（props優先のため）
+        // ただしAPIリクエストには必要なので元の値を送る
         const updated = await updateGoal(goal.id, {
           target_amount: newTarget,
-          current_amount: newCurrent,
+          current_amount: goal.current_amount,
         });
         setGoal(updated);
+      } else {
+        // 新規作成
+        const created = await createGoal({
+          label: appConfig.savingsGoal.label,
+          target_amount: newTarget,
+          current_amount: 0, // 初期値
+        });
+        setGoal(created);
       }
       setIsEditing(false);
     } catch (err) {
@@ -91,7 +113,15 @@ export const ProgressBarHero = ({
         setGoal({
           ...goal,
           target_amount: newTarget,
-          current_amount: newCurrent,
+        });
+      } else {
+        // オフラインでも一時的に表示
+        // @ts-expect-error
+        setGoal({
+          id: "temp-id",
+          label: appConfig.savingsGoal.label,
+          target_amount: newTarget,
+          current_amount: 0,
         });
       }
       setIsEditing(false);
@@ -100,9 +130,18 @@ export const ProgressBarHero = ({
     }
   };
 
+  const handleCashSuccess = () => {
+    if (onAssetChange) {
+      onAssetChange();
+    }
+    // 自身のデータも再取得（本当はAPIから取り直すべきだが、onAssetChangeで親から新しいpropsが来るのを期待するか、ここでもfetchするか）
+    // ここでは簡易的に、onAssetChangeが呼ばれて親がリフレッシュし、新しいpropsが来るのを待つ形とするが、
+    // 即時反映のために自分でもfetchする手もある。
+    // 今回は親からのprops更新をuseEffectで監視しているため、親がリフレッシュすればここも更新されるはず。
+  };
+
   const handleCancel = () => {
     setEditTarget(target.toString());
-    setEditCurrent(current.toString());
     setIsEditing(false);
   };
 
@@ -151,19 +190,30 @@ export const ProgressBarHero = ({
             </p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            if (isEditing) {
-              handleCancel();
-            } else {
-              setIsEditing(true);
-            }
-          }}
-          className="px-3 py-1.5 text-sm font-medium rounded-lg bg-[#1e3a5f]/10 dark:bg-[#c9a227]/10 text-[#1e3a5f] dark:text-[#c9a227] hover:bg-[#1e3a5f]/20 dark:hover:bg-[#c9a227]/20 transition-colors"
-        >
-          {isEditing ? "キャンセル" : "編集"}
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setIsCashModalOpen(true)}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg bg-[#c9a227]/10 text-[#c9a227] hover:bg-[#c9a227]/20 transition-colors"
+            title="入金・出金"
+          >
+            <Wallet className="w-4 h-4" />
+            入金・出金
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (isEditing) {
+                handleCancel();
+              } else {
+                setIsEditing(true);
+              }
+            }}
+            className="px-3 py-1.5 text-sm font-medium rounded-lg bg-[#1e3a5f]/10 dark:bg-[#c9a227]/10 text-[#1e3a5f] dark:text-[#c9a227] hover:bg-[#1e3a5f]/20 dark:hover:bg-[#c9a227]/20 transition-colors"
+          >
+            {isEditing ? "キャンセル" : "編集"}
+          </button>
+        </div>
       </div>
 
       {/* 編集モード */}
@@ -196,7 +246,7 @@ export const ProgressBarHero = ({
               htmlFor="current-amount"
               className="block text-sm font-medium text-[#64748b] dark:text-[#94a3b8] mb-1"
             >
-              現在の貯金額
+              現在の貯金額（自動計算）
             </label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#64748b] dark:text-[#94a3b8]">
@@ -205,11 +255,9 @@ export const ProgressBarHero = ({
               <input
                 id="current-amount"
                 type="text"
-                value={editCurrent}
-                onChange={(e) =>
-                  setEditCurrent(e.target.value.replace(/[^0-9]/g, ""))
-                }
-                className="w-full pl-8 pr-4 py-2 rounded-lg border border-[#e2e8f0] dark:border-[#334155] bg-white dark:bg-[#0f172a] text-[#1e293b] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#1e3a5f] dark:focus:ring-[#c9a227]"
+                value={current.toLocaleString()}
+                disabled
+                className="w-full pl-8 pr-4 py-2 rounded-lg border border-[#e2e8f0] dark:border-[#334155] bg-gray-100 dark:bg-[#1e293b] text-[#64748b] dark:text-[#94a3b8] cursor-not-allowed"
               />
             </div>
           </div>
@@ -263,6 +311,14 @@ export const ProgressBarHero = ({
           <span>{formatShortCurrency(target)}</span>
         </div>
       </div>
+
+      {/* 現金管理モーダル */}
+      <CashManagementModal
+        isOpen={isCashModalOpen}
+        onClose={() => setIsCashModalOpen(false)}
+        onSuccess={handleCashSuccess}
+        currentBalance={current} // 貯金額を現金残高として扱う
+      />
     </div>
   );
 };
