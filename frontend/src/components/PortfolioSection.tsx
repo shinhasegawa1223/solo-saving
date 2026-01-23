@@ -4,12 +4,18 @@ import {
   Building2,
   ChevronRight,
   Globe,
+  Plus,
   TrendingUp,
   Wallet,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { AssetBreakdownItem, DonutChart } from "@/components";
+import {
+  AssetBreakdownItem,
+  DonutChart,
+  PurchaseStockModal,
+} from "@/components";
 import {
   type Asset,
   getAssets,
@@ -44,12 +50,15 @@ const categoryColorMap: Record<number, string> = {
 interface PortfolioSectionProps {
   initialPortfolio?: PortfolioItem[];
   initialAssets?: Asset[];
+  onAssetChange?: () => void;
 }
 
 export const PortfolioSection = ({
   initialPortfolio,
   initialAssets,
+  onAssetChange,
 }: PortfolioSectionProps) => {
+  const router = useRouter();
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>(
     initialPortfolio || []
   );
@@ -58,6 +67,7 @@ export const PortfolioSection = ({
   );
   const [isLoading, setIsLoading] = useState(!initialPortfolio);
   const [error, setError] = useState<string | null>(null);
+  const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
 
   // initialデータがない場合のみAPIから取得
   useEffect(() => {
@@ -84,6 +94,25 @@ export const PortfolioSection = ({
 
     fetchData();
   }, [initialPortfolio]);
+
+  // props が更新されたら state も更新
+  useEffect(() => {
+    if (initialPortfolio) {
+      setPortfolio(initialPortfolio);
+    }
+    if (initialAssets) {
+      setAssets(initialAssets.filter((a) => a.category_id !== 4));
+    }
+  }, [initialPortfolio, initialAssets]);
+
+  const handlePurchaseSuccess = () => {
+    setIsPurchaseModalOpen(false);
+    if (onAssetChange) {
+      onAssetChange();
+    }
+    // 従来の router.refresh() も念のため呼ぶ
+    router.refresh();
+  };
 
   // 総資産額を計算
   const totalValue = portfolio.reduce(
@@ -124,16 +153,27 @@ export const PortfolioSection = ({
     <section className="space-y-6">
       {/* カテゴリ別構成 */}
       <div className="p-8 rounded-2xl bg-white dark:bg-[#1e293b] border border-[#e2e8f0] dark:border-[#334155] shadow-lg">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-1.5 h-8 rounded-full bg-gradient-to-b from-[#6366f1] to-[#8b5cf6]" />
-          <div>
-            <h2 className="text-xl font-bold text-[#1e293b] dark:text-white">
-              ポートフォリオ構成
-            </h2>
-            <p className="text-sm text-[#64748b] dark:text-[#94a3b8]">
-              資産カテゴリ別の配分比率
-            </p>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-1.5 h-8 rounded-full bg-gradient-to-b from-[#6366f1] to-[#8b5cf6]" />
+            <div>
+              <h2 className="text-xl font-bold text-[#1e293b] dark:text-white">
+                ポートフォリオ構成
+              </h2>
+              <p className="text-sm text-[#64748b] dark:text-[#94a3b8]">
+                資産カテゴリ別の配分比率
+              </p>
+            </div>
           </div>
+          {/* 銘柄追加ボタン */}
+          <button
+            type="button"
+            onClick={() => setIsPurchaseModalOpen(true)}
+            className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#1e3a5f] to-[#2d4a7c] text-white font-medium flex items-center gap-2 hover:opacity-90 transition-opacity"
+          >
+            <Plus className="w-4 h-4" />
+            銘柄を追加
+          </button>
         </div>
 
         <div className="flex flex-col lg:flex-row items-center gap-8">
@@ -142,9 +182,11 @@ export const PortfolioSection = ({
             <DonutChart
               data={donutData}
               colors={donutColors}
-              valueFormatter={(value: number) => `¥${value.toLocaleString()}`}
+              valueFormatter={(value: number) =>
+                `¥${Math.round(value).toLocaleString()}`
+              }
               variant="donut"
-              label={`¥${totalValue.toLocaleString()}`}
+              label={`¥${Math.round(totalValue).toLocaleString()}`}
             />
           </div>
 
@@ -158,7 +200,7 @@ export const PortfolioSection = ({
                 }
                 title={item.name}
                 subtitle={subtitleMap[item.name] || item.name}
-                value={`¥${Number(item.value).toLocaleString()}`}
+                value={`¥${Math.round(Number(item.value)).toLocaleString()}`}
                 percentage={`${Number(item.percentage).toFixed(1)}%`}
                 color={item.color as "indigo" | "amber" | "emerald" | "slate"}
               />
@@ -238,6 +280,13 @@ export const PortfolioSection = ({
           </div>
         </div>
       )}
+
+      {/* 購入モーダル */}
+      <PurchaseStockModal
+        isOpen={isPurchaseModalOpen}
+        onClose={() => setIsPurchaseModalOpen(false)}
+        onSuccess={handlePurchaseSuccess}
+      />
     </section>
   );
 };

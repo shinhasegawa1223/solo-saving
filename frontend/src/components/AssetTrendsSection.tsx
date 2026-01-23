@@ -35,8 +35,10 @@ export const AssetTrendsSection = ({
 
   // 期間変更時のみAPIから取得（初期データと同じ期間の場合はスキップ）
   useEffect(() => {
-    // 初期データがあり、かつ期間がmonth（初期値）の場合はスキップ
+    // 初期データがあり、かつ期間がmonth（初期値）の場合は、
+    // initialDataをそのまま使用する（親から渡された最新データを反映）
     if (initialData && timePeriod === initialPeriod) {
+      setChartData(initialData);
       return;
     }
 
@@ -193,19 +195,14 @@ export const AssetTrendsSection = ({
             categories={selectedCategories}
             colors={selectedColors}
             valueFormatter={(number: number) => {
-              if (number >= 10000000) {
-                // 1000万以上: ¥10M
+              if (number >= 1000000) {
+                // 100万以上は "¥1M"
                 return `¥${(number / 1000000).toFixed(0)}M`;
               }
-              if (number >= 1000000) {
-                // 100万以上: ¥1.5M
-                return `¥${(number / 1000000).toFixed(1)}M`;
-              }
               if (number >= 10000) {
-                // 1万以上: ¥13.7万
-                return `¥${(number / 10000).toFixed(1)}万`;
+                // 1万以上は "¥10万"
+                return `¥${(number / 10000).toFixed(0)}万`;
               }
-              // 1万未満: ¥9,000
               return `¥${number.toLocaleString()}`;
             }}
             showLegend={false}

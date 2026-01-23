@@ -54,7 +54,7 @@ const CustomTooltip = ({ payload, active, label }: CustomTooltipProps) => {
                 </span>
               </div>
               <span className="text-sm font-bold text-white">
-                ¥{Number(entry.value).toLocaleString("ja-JP")}
+                ¥{Math.round(Number(entry.value)).toLocaleString("ja-JP")}
               </span>
             </div>
           );

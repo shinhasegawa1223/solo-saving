@@ -111,6 +111,79 @@ class AssetCreate(AssetBase):
     pass
 
 
+class AssetPurchaseRequest(BaseModel):
+    """株購入リクエスト用スキーマ"""
+
+    category_id: int = Field(
+        ...,
+        description="カテゴリID（1: 日本株, 2: 米国株, 3: 投資信託）",
+        json_schema_extra={"example": 1},
+    )
+    ticker_symbol: str = Field(
+        ...,
+        max_length=50,
+        description="ティッカーシンボル",
+        json_schema_extra={"example": "7203.T"},
+    )
+    name: str = Field(
+        ...,
+        max_length=255,
+        description="正式銘柄名",
+        json_schema_extra={"example": "トヨタ自動車"},
+    )
+    quantity: Decimal = Field(
+        ...,
+        gt=0,
+        description="購入株数",
+        json_schema_extra={"example": 100},
+    )
+    purchase_price: Decimal = Field(
+        ...,
+        gt=0,
+        description="購入単価",
+        json_schema_extra={"example": 2500.00},
+    )
+    currency: str = Field(
+        default="JPY",
+        max_length=3,
+        description="通貨コード",
+        json_schema_extra={"example": "JPY"},
+    )
+    usd_jpy_rate: Decimal | None = Field(
+        None,
+        gt=0,
+        description="購入時のドル円レート（米国株の場合のみ）",
+        json_schema_extra={"example": 150.25},
+    )
+    purchase_date: date | None = Field(
+        None,
+        description="購入日（指定がない場合は現在日時）",
+        json_schema_extra={"example": "2024-01-01"},
+    )
+
+
+class CashTransactionRequest(BaseModel):
+    """現金入出金リクエスト用スキーマ"""
+
+    amount: Decimal = Field(
+        ...,
+        gt=0,
+        description="入出金額（円）",
+        json_schema_extra={"example": 100000},
+    )
+    transaction_type: str = Field(
+        ...,
+        description="取引種別（deposit: 入金, withdraw: 出金）",
+        json_schema_extra={"example": "deposit"},
+    )
+    note: str | None = Field(
+        None,
+        max_length=255,
+        description="メモ",
+        json_schema_extra={"example": "給与入金"},
+    )
+
+
 class AssetUpdate(BaseModel):
     """資産更新用スキーマ（部分更新対応）"""
 
