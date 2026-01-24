@@ -216,7 +216,7 @@ export default function AssetDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#f8fafc] dark:bg-[#0f172a]">
+      <div className="min-h-screen bg-[#fafafa] dark:bg-[#171717]">
         <Header />
         <main className="max-w-4xl mx-auto px-6 py-8">
           <div className="animate-pulse space-y-6">
@@ -232,7 +232,7 @@ export default function AssetDetailPage() {
 
   if (error || !asset) {
     return (
-      <div className="min-h-screen bg-[#f8fafc] dark:bg-[#0f172a]">
+      <div className="min-h-screen bg-[#fafafa] dark:bg-[#171717]">
         <Header />
         <main className="max-w-4xl mx-auto px-6 py-8">
           <Link
@@ -252,7 +252,7 @@ export default function AssetDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] dark:bg-[#0f172a] transition-colors duration-300">
+    <div className="min-h-screen bg-[#fafafa] dark:bg-[#171717] transition-colors duration-300">
       <Header />
 
       <main className="max-w-7xl mx-auto px-6 py-8 space-y-6">
