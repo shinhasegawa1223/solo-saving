@@ -133,9 +133,13 @@ async def get_chart_data(
         result = await db.execute(query)
         snapshots = result.scalars().all()
 
+        def format_day_label(d: date) -> str:
+            """日次ラベル: M/D形式（例: 12/31, 1/1）"""
+            return f"{d.month}/{d.day}"
+
         data = [
             AssetSnapshotChartData(
-                date=s.snapshot_date.strftime("%m/%d"),
+                date=format_day_label(s.snapshot_date),
                 日本株=s.japanese_stocks,
                 米国株=s.us_stocks,
                 投資信託=s.investment_trusts,
@@ -146,8 +150,9 @@ async def get_chart_data(
         ]
 
         # 今日の日付のデータがあれば置換、なければ追加
-        current_date_str = today.strftime("%m/%d")
-        if data and data[-1].date == current_date_str:
+        current_date_label = format_day_label(today)
+        current_chart_data.date = current_date_label
+        if data and data[-1].date == current_date_label:
             data[-1] = current_chart_data
         else:
             data.append(current_chart_data)
