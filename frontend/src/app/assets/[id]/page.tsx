@@ -284,6 +284,14 @@ export default function AssetDetailPage() {
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
                 {asset.name}
               </h1>
+              {asset.current_price && (
+                <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  {asset.currency === "USD"
+                    ? `$${Number(asset.current_price).toFixed(2)}`
+                    : `¥${Number(asset.current_price).toLocaleString()}`}
+                  <span className="text-xs ml-1">/ 株</span>
+                </div>
+              )}
             </div>
             <div className="text-right">
               <div className="text-3xl font-bold text-gray-900 dark:text-white">
@@ -359,18 +367,7 @@ export default function AssetDetailPage() {
                   : "-"}
               </div>
             </div>
-            <div>
-              <div className="text-sm text-gray-500 dark:text-gray-400">
-                平均取得単価
-              </div>
-              <div className="text-lg font-semibold text-gray-900 dark:text-white">
-                {asset.average_cost
-                  ? asset.currency === "USD"
-                    ? `$${Number(asset.average_cost).toFixed(2)}`
-                    : `¥${Number(asset.average_cost).toLocaleString()}`
-                  : "-"}
-              </div>
-            </div>
+
             <div>
               <div className="text-sm text-gray-500 dark:text-gray-400">
                 通貨
