@@ -152,7 +152,7 @@ export const PortfolioSection = ({
   return (
     <section className="space-y-6">
       {/* カテゴリ別構成 */}
-      <div className="p-8 rounded-2xl bg-white dark:bg-[#1e293b] border border-[#e2e8f0] dark:border-[#334155] shadow-lg">
+      <div className="p-6 rounded-xl bg-white dark:bg-[#262626] border border-[#e2e8f0] dark:border-[#404040] shadow-sm">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <div className="w-1.5 h-8 rounded-full bg-gradient-to-b from-[#6366f1] to-[#8b5cf6]" />
@@ -169,7 +169,7 @@ export const PortfolioSection = ({
           <button
             type="button"
             onClick={() => setIsPurchaseModalOpen(true)}
-            className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#1e3a5f] to-[#2d4a7c] text-white font-medium flex items-center gap-2 hover:opacity-90 transition-opacity"
+            className="px-4 py-2 rounded-lg bg-gradient-to-r from-[#1e3a5f] to-[#2d4a7c] text-white font-medium flex items-center gap-2 hover:opacity-90 transition-opacity"
           >
             <Plus className="w-4 h-4" />
             銘柄を追加
@@ -213,7 +213,7 @@ export const PortfolioSection = ({
       {assets.length > 0 && (
         <div
           id="holdings"
-          className="p-8 rounded-2xl bg-white dark:bg-[#1e293b] border border-[#e2e8f0] dark:border-[#334155] shadow-lg scroll-mt-24"
+          className="p-6 rounded-xl bg-white dark:bg-[#262626] border border-[#e2e8f0] dark:border-[#404040] shadow-sm scroll-mt-24"
         >
           <div className="flex items-center gap-3 mb-6">
             <div className="w-1.5 h-8 rounded-full bg-gradient-to-b from-[#10b981] to-[#059669]" />
@@ -232,7 +232,7 @@ export const PortfolioSection = ({
               <Link
                 key={asset.id}
                 href={`/assets/${asset.id}`}
-                className="flex items-center justify-between p-4 rounded-xl bg-[#f8fafc] dark:bg-[#0f172a] hover:bg-[#f1f5f9] dark:hover:bg-[#1e293b] transition-colors group"
+                className="flex items-center justify-between p-4 rounded-xl bg-neutral-50 dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors group"
               >
                 <div className="flex items-center gap-4">
                   <div
@@ -244,12 +244,12 @@ export const PortfolioSection = ({
                         {asset.name}
                       </span>
                       {asset.ticker_symbol && (
-                        <span className="text-sm text-[#64748b] dark:text-[#94a3b8]">
+                        <span className="text-sm text-neutral-500 dark:text-neutral-400">
                           ({asset.ticker_symbol})
                         </span>
                       )}
                     </div>
-                    <span className="text-sm text-[#64748b] dark:text-[#94a3b8]">
+                    <span className="text-sm text-neutral-500 dark:text-neutral-400">
                       {Number(asset.quantity) % 1 === 0
                         ? `${Math.floor(Number(asset.quantity))}株`
                         : `${Number(asset.quantity).toFixed(2)}株`}{" "}
@@ -273,7 +273,7 @@ export const PortfolioSection = ({
                       Number(asset.current_value || 0)
                     ).toLocaleString()}
                   </span>
-                  <ChevronRight className="w-5 h-5 text-[#94a3b8] group-hover:text-[#6366f1] transition-colors" />
+                  <ChevronRight className="w-5 h-5 text-neutral-400 group-hover:text-[#6366f1] transition-colors" />
                 </div>
               </Link>
             ))}

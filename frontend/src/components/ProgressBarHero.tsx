@@ -47,7 +47,7 @@ export const ProgressBarHero = ({
   // 編集フォームの初期値を設定
   useEffect(() => {
     if (goal) {
-      setEditTarget(goal.target_amount.toString());
+      setEditTarget(Math.floor(Number(goal.target_amount)).toString());
     } else {
       setEditTarget(fallbackTarget.toString());
     }
@@ -148,7 +148,7 @@ export const ProgressBarHero = ({
   if (isLoading) {
     return (
       <div
-        className={`p-6 rounded-2xl bg-white dark:bg-[#1e293b] border border-[#e2e8f0] dark:border-[#334155] shadow-xl ${className || ""}`}
+        className={`p-6 rounded-xl bg-white dark:bg-[#262626] border border-[#e2e8f0] dark:border-[#404040] shadow-sm ${className || ""}`}
       >
         <div className="h-40 flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1e3a5f] dark:border-[#c9a227]" />
@@ -159,7 +159,7 @@ export const ProgressBarHero = ({
 
   return (
     <div
-      className={`p-6 rounded-2xl bg-white dark:bg-[#1e293b] border border-[#e2e8f0] dark:border-[#334155] shadow-xl ${className || ""}`}
+      className={`p-6 rounded-xl bg-white dark:bg-[#262626] border border-[#e2e8f0] dark:border-[#404040] shadow-sm ${className || ""}`}
     >
       {/* ヘッダー */}
       <div className="flex items-center justify-between mb-6">
@@ -185,7 +185,7 @@ export const ProgressBarHero = ({
             <h3 className="text-lg font-bold text-[#1e293b] dark:text-white">
               {targetLabel}
             </h3>
-            <p className="text-sm text-[#64748b] dark:text-[#94a3b8]">
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">
               目標達成まであと {formatShortCurrency(remaining)}
             </p>
           </div>
@@ -222,42 +222,42 @@ export const ProgressBarHero = ({
           <div>
             <label
               htmlFor="target-amount"
-              className="block text-sm font-medium text-[#64748b] dark:text-[#94a3b8] mb-1"
+              className="block text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-1"
             >
               目標金額
             </label>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#64748b] dark:text-[#94a3b8]">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 dark:text-neutral-400">
                 ¥
               </span>
               <input
                 id="target-amount"
                 type="text"
-                value={editTarget}
+                value={Number(editTarget).toLocaleString()}
                 onChange={(e) =>
                   setEditTarget(e.target.value.replace(/[^0-9]/g, ""))
                 }
-                className="w-full pl-8 pr-4 py-2 rounded-lg border border-[#e2e8f0] dark:border-[#334155] bg-white dark:bg-[#0f172a] text-[#1e293b] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#1e3a5f] dark:focus:ring-[#c9a227]"
+                className="w-full pl-8 pr-4 py-2 rounded-lg border border-[#e2e8f0] dark:border-[#404040] bg-white dark:bg-[#171717] text-[#1e293b] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#1e3a5f] dark:focus:ring-[#c9a227]"
               />
             </div>
           </div>
           <div>
             <label
               htmlFor="current-amount"
-              className="block text-sm font-medium text-[#64748b] dark:text-[#94a3b8] mb-1"
+              className="block text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-1"
             >
               現在の貯金額（自動計算）
             </label>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#64748b] dark:text-[#94a3b8]">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 dark:text-neutral-400">
                 ¥
               </span>
               <input
                 id="current-amount"
                 type="text"
-                value={current.toLocaleString()}
+                value={Math.floor(current).toLocaleString()}
                 disabled
-                className="w-full pl-8 pr-4 py-2 rounded-lg border border-[#e2e8f0] dark:border-[#334155] bg-gray-100 dark:bg-[#1e293b] text-[#64748b] dark:text-[#94a3b8] cursor-not-allowed"
+                className="w-full pl-8 pr-4 py-2 rounded-lg border border-[#e2e8f0] dark:border-[#404040] bg-neutral-100 dark:bg-[#171717] text-neutral-500 dark:text-neutral-400 cursor-not-allowed"
               />
             </div>
           </div>
@@ -274,16 +274,16 @@ export const ProgressBarHero = ({
         <>
           {/* 金額表示 */}
           <div className="grid grid-cols-2 gap-4 mb-6">
-            <div className="p-4 rounded-xl bg-[#f8fafc] dark:bg-[#0f172a]">
-              <p className="text-sm text-[#64748b] dark:text-[#94a3b8] mb-1">
+            <div className="p-4 rounded-xl bg-neutral-50 dark:bg-[#171717]">
+              <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-1">
                 現在の貯金額
               </p>
               <p className="text-2xl font-bold text-[#1e293b] dark:text-white">
                 {formatCurrency(current)}
               </p>
             </div>
-            <div className="p-4 rounded-xl bg-[#f8fafc] dark:bg-[#0f172a]">
-              <p className="text-sm text-[#64748b] dark:text-[#94a3b8] mb-1">
+            <div className="p-4 rounded-xl bg-neutral-50 dark:bg-[#171717]">
+              <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-1">
                 目標金額
               </p>
               <p className="text-2xl font-bold text-[#1e3a5f] dark:text-[#c9a227]">

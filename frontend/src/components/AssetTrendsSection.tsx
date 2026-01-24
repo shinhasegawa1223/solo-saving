@@ -112,7 +112,7 @@ export const AssetTrendsSection = ({
   const chartMaxValue = calculateMaxValue();
 
   return (
-    <section className="p-8 rounded-2xl bg-white dark:bg-[#1e293b] border border-[#e2e8f0] dark:border-[#334155] shadow-lg">
+    <section className="p-6 rounded-xl bg-white dark:bg-[#262626] border border-[#e2e8f0] dark:border-[#404040] shadow-sm">
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
         <div className="flex items-center gap-3">
           <div className="w-1.5 h-8 rounded-full bg-gradient-to-b from-[#c9a227] to-[#dab842]" />
@@ -120,14 +120,14 @@ export const AssetTrendsSection = ({
             <h2 className="text-xl font-bold text-[#1e293b] dark:text-white">
               資産推移
             </h2>
-            <p className="text-sm text-[#64748b] dark:text-[#94a3b8]">
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">
               期間とカテゴリを選択して表示
             </p>
           </div>
         </div>
 
         {/* 期間切り替えタブ */}
-        <div className="flex items-center gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
+        <div className="flex items-center gap-1 p-1 bg-neutral-100 dark:bg-neutral-800 rounded-lg">
           {(Object.keys(timePeriodConfig) as TimePeriod[]).map((period) => (
             <button
               type="button"
@@ -138,7 +138,7 @@ export const AssetTrendsSection = ({
                 ${
                   timePeriod === period
                     ? "bg-white dark:bg-[#1e3a5f] text-[#1e3a5f] dark:text-white shadow-sm"
-                    : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                    : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300"
                 }
               `}
             >
@@ -163,7 +163,7 @@ export const AssetTrendsSection = ({
                 ${
                   isSelected
                     ? `${config.bgColor} text-white shadow-lg`
-                    : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                    : "bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-600"
                 }
               `}
             >
