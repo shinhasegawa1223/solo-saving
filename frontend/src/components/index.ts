@@ -30,6 +30,7 @@ export { AreaChart } from "./AreaChart";
 export { AssetBreakdownItem } from "./AssetBreakdownItem";
 export { AssetTrendsSection } from "./AssetTrendsSection";
 export { CashManagementModal } from "./CashManagementModal";
+export { CustomDatePicker } from "./CustomDatePicker";
 export { DonutChart } from "./DonutChart";
 export { Footer } from "./Footer";
 // Layout Components
