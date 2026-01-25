@@ -209,8 +209,10 @@ function EnhancedPriceChart({
               strokeWidth="0.8"
               strokeLinecap="round"
             />
+          </svg>
 
-            {/* 購入ポイントマーカー */}
+          {/* 購入ポイントマーカー (HTML overlay) */}
+          <div className="absolute inset-0 pointer-events-none">
             {(() => {
               // 描画済みのポイントを管理して重なりを防ぐ
               const renderedPoints: { x: number; y: number }[] = [];
@@ -222,7 +224,6 @@ function EnhancedPriceChart({
                 let { x, y } = basePosition;
 
                 // 重なりチェックと補正
-                // 既存のポイントと重なる場合、位置をずらして再試行
                 let retry = 0;
                 const threshold = 2.5; // 重なり判定の閾値（%）
 
@@ -245,19 +246,20 @@ function EnhancedPriceChart({
 
                 return (
                   // biome-ignore lint/a11y/noStaticElementInteractions: tooltip interaction only
-                  <circle
+                  <div
                     key={`${transaction.date}-${transaction.quantity}-${retry}`}
-                    cx={x}
-                    cy={y}
-                    r={hoveredTransaction === transaction ? "2" : "1.5"}
-                    fill="#6366f1"
-                    stroke="#fff"
-                    strokeWidth="0.5"
-                    className="cursor-pointer transition-all hover:r-2"
+                    className={`absolute rounded-full border border-white cursor-pointer transition-all pointer-events-auto shadow-sm ${
+                      hoveredTransaction === transaction ? "w-5 h-5" : "w-3 h-3"
+                    }`}
+                    style={{
+                      left: `${x}%`,
+                      top: `${y}%`,
+                      backgroundColor: "#f59e0b",
+                      transform: "translate(-50%, -50%)",
+                    }}
                     onMouseEnter={(e) => {
                       setHoveredTransaction(transaction);
                       const rect = e.currentTarget.getBoundingClientRect();
-                      // ツールチップをマーカーの上に表示
                       setTooltipPosition({
                         x: rect.left + rect.width / 2,
                         y: rect.top,
@@ -268,7 +270,7 @@ function EnhancedPriceChart({
                 );
               });
             })()}
-          </svg>
+          </div>
 
           {/* ツールチップ */}
           {hoveredTransaction && (

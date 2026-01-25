@@ -168,6 +168,9 @@ async def purchase_asset(
         existing_asset.average_cost = new_avg_cost
         existing_asset.current_price = current_price
         existing_asset.current_value = current_value_jpy
+        existing_asset.total_cost_jpy = (
+            existing_asset.total_cost_jpy or Decimal("0")
+        ) + total_purchase_cost
 
         # 通貨情報は既存のものを維持（または更新？）
         # 米国株カテゴリの場合でも、amount系フィールドが円表記なら currency="JPY" にすべきか？
@@ -213,6 +216,8 @@ async def purchase_asset(
             current_price=asset_price,
             # 評価額は常に日本円
             current_value=current_value_jpy,
+            # 取得総額(JPY)
+            total_cost_jpy=total_purchase_cost,
             currency=purchase_data.currency,
             created_at=datetime.combine(purchase_data.purchase_date, datetime.min.time())
             if purchase_data.purchase_date

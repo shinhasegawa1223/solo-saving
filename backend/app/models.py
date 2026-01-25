@@ -58,6 +58,9 @@ class Asset(Base):
     current_price: Mapped[Decimal | None] = mapped_column(Numeric(18, 2), nullable=True)
     current_value: Mapped[Decimal | None] = mapped_column(Numeric(18, 2), nullable=True)
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="JPY")
+    total_cost_jpy: Mapped[Decimal] = mapped_column(
+        Numeric(18, 2), nullable=False, default=Decimal("0")
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.now()
     )
