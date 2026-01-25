@@ -3,7 +3,7 @@
 import { ArrowLeft, TrendingDown, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Footer, Header } from "@/components";
 import { formatCurrency } from "@/config";
@@ -75,22 +75,45 @@ function EnhancedPriceChart({
     priceData[priceData.length - 1]?.date,
   ];
 
+  // トランザクションの重複排除
+  const uniqueTransactions = useMemo(
+    () =>
+      transactions.filter(
+        (t, index, self) =>
+          index ===
+          self.findIndex(
+            (t2) =>
+              t2.date.split("T")[0] === t.date.split("T")[0] &&
+              t2.quantity === t.quantity &&
+              // 価格も念のためチェック（取得単価が異なれば別取引の可能性）
+              t2.price === t.price
+          )
+      ),
+    [transactions]
+  );
+
   // 購入ポイントの座標を計算
   const getPurchasePointPosition = useCallback(
     (transactionDate: string) => {
-      // 日付文字列をDateオブジェクトに変換して比較
-      const targetDate = new Date(transactionDate).getTime();
+      // 日付文字列を YYYY-MM-DD 形式で UTC タイムスタンプに変換して比較
+      const toUtcTime = (dateStr: string) => {
+        const datePart = dateStr.split("T")[0];
+        // YYYY-MM-DD を直接パースすると UTC ミッドナイトになる
+        return new Date(datePart).getTime();
+      };
+
+      const targetTime = toUtcTime(transactionDate);
 
       // 最も近い日付のインデックスを探す
       let closestIndex = -1;
       let minDiff = Infinity;
 
       priceData.forEach((d, idx) => {
-        const currentDate = new Date(d.date).getTime();
-        const diff = Math.abs(currentDate - targetDate);
+        const currentTime = toUtcTime(d.date);
+        const diff = Math.abs(currentTime - targetTime);
 
-        // 3日以内の誤差なら許容（土日休みなどを考慮）
-        if (diff < minDiff && diff <= 3 * 24 * 60 * 60 * 1000) {
+        // 5日以内の誤差なら許容（土日休み、祝日、データ遅延を考慮して少し広げる）
+        if (diff < minDiff && diff <= 5 * 24 * 60 * 60 * 1000) {
           minDiff = diff;
           closestIndex = idx;
         }
@@ -114,26 +137,6 @@ function EnhancedPriceChart({
   };
 
   const avgCostY = getAverageCostY();
-
-  // DEBUG LOGGING (Moved to avoid hook error)
-  useEffect(() => {
-    console.log("EnhancedPriceChart Debug:", {
-      transactionsCount: transactions.length,
-      priceDataCount: priceData.length,
-      dateRange: {
-        start: priceData[0]?.date,
-        end: priceData[priceData.length - 1]?.date,
-      },
-    });
-    transactions.forEach((t) => {
-      const pos = getPurchasePointPosition(t.date);
-      console.log(`Transaction ${t.date}:`, {
-        quantity: t.quantity,
-        pos,
-        inRange: !!pos,
-      });
-    });
-  }, [transactions, priceData, getPurchasePointPosition]);
 
   if (isLoading) {
     return (
