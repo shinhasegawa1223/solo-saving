@@ -335,3 +335,50 @@ export async function getCashBalance(): Promise<{
 }> {
   return fetchApi<{ balance: number; currency: string }>("/api/cash/balance");
 }
+
+// ============================================
+// 価格履歴・トランザクション関連 (yfinance)
+// ============================================
+
+/** 価格履歴データ（yfinanceから取得） */
+export interface PriceHistoryData {
+  date: string; // YYYY-MM-DD format
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
+/** トランザクション（購入履歴）データ */
+export interface TransactionData {
+  date: string; // YYYY-MM-DD format
+  quantity: number;
+  price: number; // Purchase price per unit
+  usd_jpy_rate: number | null; // Exchange rate if USD asset
+  total_cost: number; // Total cost in JPY
+}
+
+/**
+ * yfinanceから資産の価格履歴を取得
+ * @param assetId - 資産ID
+ * @param period - 取得期間 (7d, 1mo, 3mo, 1y, max)
+ */
+export async function getAssetPriceHistory(
+  assetId: string,
+  period: string = "1mo"
+): Promise<PriceHistoryData[]> {
+  return fetchApi<PriceHistoryData[]>(
+    `/api/assets/${assetId}/price-history?period=${period}`
+  );
+}
+
+/**
+ * 資産の購入履歴（トランザクション）を取得
+ * @param assetId - 資産ID
+ */
+export async function getAssetTransactions(
+  assetId: string
+): Promise<TransactionData[]> {
+  return fetchApi<TransactionData[]>(`/api/assets/${assetId}/transactions`);
+}

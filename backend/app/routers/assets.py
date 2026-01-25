@@ -24,6 +24,8 @@ from app.schemas.asset import (
     AssetUpdate,
 )
 from app.schemas.history import AssetHistoryChartData
+from app.schemas.price_history import PriceHistoryData, TransactionData
+from app.services import YFinanceService
 
 assets_router = APIRouter(
     prefix="/api/assets",
@@ -638,3 +640,117 @@ async def refresh_asset_prices(db: AsyncSession = Depends(get_db)):
         "updated_count": updated_count,
         "usd_jpy_rate": current_rate,
     }
+
+
+@assets_router.get(
+    "/{asset_id}/price-history",
+    response_model=list[PriceHistoryData],
+    summary="yfinance価格履歴取得",
+    description="yfinanceから指定された資産の全期間価格データを取得します。",
+)
+async def get_asset_price_history(
+    asset_id: UUID,
+    period: str = Query(
+        default="1mo",
+        description="取得期間 (7d, 1mo, 3mo, 1y, max)",
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    yfinanceから資産の価格履歴を取得。
+
+    Args:
+        asset_id: 資産ID（UUID）
+        period: 取得期間（7d, 1mo, 3mo, 1y, max）
+
+    Returns:
+        価格履歴リスト（日付、始値、高値、安値、終値、出来高）
+
+    Raises:
+        404: 資産が見つからない場合
+        400: 価格データの取得に失敗した場合
+    """
+    # 資産の存在確認
+    result = await db.execute(
+        select(Asset).options(selectinload(Asset.category)).where(Asset.id == asset_id)
+    )
+    asset = result.scalar_one_or_none()
+    if not asset:
+        raise HTTPException(status_code=404, detail="資産が見つかりません")
+
+    # ティッカーシンボルがない場合はエラー
+    if not asset.ticker_symbol:
+        raise HTTPException(
+            status_code=400,
+            detail="この資産にはティッカーシンボルが設定されていません",
+        )
+
+    # yfinanceから価格データを取得
+    try:
+        price_history = YFinanceService.get_price_history(
+            ticker_symbol=asset.ticker_symbol,
+            category_id=asset.category_id,
+            period=period,
+        )
+        return price_history
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+@assets_router.get(
+    "/{asset_id}/transactions",
+    response_model=list[TransactionData],
+    summary="購入履歴取得",
+    description="指定された資産の購入履歴を取得します。",
+)
+async def get_asset_transactions(
+    asset_id: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    資産の購入履歴を取得。
+
+    現在の実装では、初回購入日のみを返します。
+    将来的にトランザクションテーブルを追加して、
+    複数回の購入履歴を記録することを推奨します。
+
+    Args:
+        asset_id: 資産ID（UUID）
+
+    Returns:
+        購入履歴リスト
+
+    Raises:
+        404: 資産が見つかりません
+    """
+    # 資産の存在確認
+    result = await db.execute(
+        select(Asset).options(selectinload(Asset.category)).where(Asset.id == asset_id)
+    )
+    asset = result.scalar_one_or_none()
+    if not asset:
+        raise HTTPException(status_code=404, detail="資産が見つかりません")
+
+    # 簡易版: 初回購入のみを返す
+    # created_atを購入日として使用
+    purchase_date = asset.created_at.date() if asset.created_at else date.today()
+
+    # 購入価格は average_cost を使用
+    purchase_price = asset.average_cost or Decimal("0")
+
+    # 合計コスト（円建て）
+    total_cost_jpy = (purchase_price * asset.quantity).quantize(Decimal("0.01"))
+    if asset.currency == "USD":
+        # USD資産の場合、為替レートが必要だが、履歴がないため現在のレートを使用
+        # これは正確ではないが、簡易実装として許容
+        total_cost_jpy = asset.current_value or Decimal("0")
+
+    transaction = TransactionData(
+        date=purchase_date.strftime("%Y-%m-%d"),
+        quantity=asset.quantity,
+        price=purchase_price,
+        usd_jpy_rate=None,  # 履歴がないため None
+        total_cost=total_cost_jpy,
+    )
+
+    return [transaction]
