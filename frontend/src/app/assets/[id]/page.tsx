@@ -75,23 +75,6 @@ function EnhancedPriceChart({
     priceData[priceData.length - 1]?.date,
   ];
 
-  // トランザクションの重複排除
-  const uniqueTransactions = useMemo(
-    () =>
-      transactions.filter(
-        (t, index, self) =>
-          index ===
-          self.findIndex(
-            (t2) =>
-              t2.date.split("T")[0] === t.date.split("T")[0] &&
-              t2.quantity === t.quantity &&
-              // 価格も念のためチェック（取得単価が異なれば別取引の可能性）
-              t2.price === t.price
-          )
-      ),
-    [transactions]
-  );
-
   // 購入ポイントの座標を計算
   const getPurchasePointPosition = useCallback(
     (transactionDate: string) => {
@@ -129,14 +112,6 @@ function EnhancedPriceChart({
     },
     [priceData, minValue, range]
   );
-
-  // 平均取得単価のY座標を計算
-  const getAverageCostY = () => {
-    if (!averageCost) return null;
-    return 100 - ((averageCost - minValue) / range) * 100;
-  };
-
-  const avgCostY = getAverageCostY();
 
   if (isLoading) {
     return (
@@ -206,29 +181,7 @@ function EnhancedPriceChart({
               />
             ))}
 
-            {/* 平均取得単価ライン */}
-            {avgCostY !== null && (
-              <>
-                <line
-                  x1="0"
-                  y1={avgCostY}
-                  x2="100"
-                  y2={avgCostY}
-                  stroke="#f59e0b"
-                  strokeWidth="0.5"
-                  strokeDasharray="2,2"
-                />
-                <text
-                  x="2"
-                  y={avgCostY - 1}
-                  fontSize="2"
-                  fill="#f59e0b"
-                  className="text-xs"
-                >
-                  平均取得単価
-                </text>
-              </>
-            )}
+            {/* 平均取得単価ライン（削除済み） */}
 
             {/* チャートエリア(Area) */}
             <path

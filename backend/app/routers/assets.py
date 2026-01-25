@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
-from app.models import Asset, AssetHistory, AssetSnapshot
+from app.models import Asset, AssetHistory, AssetSnapshot, Transaction
 from app.schemas.asset import (
     AssetCreate,
     AssetPurchaseRequest,
@@ -177,6 +177,21 @@ async def purchase_asset(
         if purchase_data.currency:
             existing_asset.currency = purchase_data.currency
 
+        # Create Transaction record
+        transaction = Transaction(
+            asset_id=existing_asset.id,
+            transaction_type="buy",
+            quantity=purchase_data.quantity,
+            price=purchase_data.purchase_price,
+            usd_jpy_rate=purchase_data.usd_jpy_rate,
+            currency=purchase_data.currency,
+            total_cost_jpy=current_value_jpy,  # Calculated at purchase time
+            transaction_date=datetime.combine(
+                purchase_data.purchase_date or date.today(), datetime.min.time()
+            ),
+        )
+        db.add(transaction)
+
         await db.commit()
         # カテゴリを含めて再取得
         result = await db.execute(
@@ -204,6 +219,23 @@ async def purchase_asset(
             else datetime.now(),
         )
         db.add(new_asset)
+        await db.flush()  # to get new_asset.id
+
+        # Create Transaction record
+        transaction = Transaction(
+            asset_id=new_asset.id,
+            transaction_type="buy",
+            quantity=purchase_data.quantity,
+            price=purchase_data.purchase_price,
+            usd_jpy_rate=purchase_data.usd_jpy_rate,
+            currency=purchase_data.currency,
+            total_cost_jpy=current_value_jpy,  # Calculated at purchase time
+            transaction_date=datetime.combine(
+                purchase_data.purchase_date or date.today(), datetime.min.time()
+            ),
+        )
+        db.add(transaction)
+
         await db.commit()
         # カテゴリを含めて再取得
         result = await db.execute(
@@ -731,8 +763,28 @@ async def get_asset_transactions(
     if not asset:
         raise HTTPException(status_code=404, detail="資産が見つかりません")
 
-    # 簡易版: 初回購入のみを返す
-    # created_atを購入日として使用
+    # Fetch transactions from DB
+    txn_result = await db.execute(
+        select(Transaction)
+        .where(Transaction.asset_id == asset_id)
+        .order_by(Transaction.transaction_date)
+    )
+    transactions = txn_result.scalars().all()
+
+    if transactions:
+        return [
+            TransactionData(
+                date=t.transaction_date.strftime("%Y-%m-%d"),
+                quantity=t.quantity,
+                price=t.price,
+                usd_jpy_rate=t.usd_jpy_rate,
+                total_cost=t.total_cost_jpy,
+            )
+            for t in transactions
+        ]
+
+    # Fallback for legacy data (no transaction records)
+    # created_atを初回購入日として使用
     purchase_date = asset.created_at.date() if asset.created_at else date.today()
 
     # 購入価格は average_cost を使用
@@ -743,7 +795,23 @@ async def get_asset_transactions(
     if asset.currency == "USD":
         # USD資産の場合、為替レートが必要だが、履歴がないため現在のレートを使用
         # これは正確ではないが、簡易実装として許容
-        total_cost_jpy = asset.current_value or Decimal("0")
+        # 注意: current_valueは現在の価格ベースなので、購入時のコストとは異なる可能性があるが
+        # 履歴がない以上、推定するしかない。あるいは average_cost * quantity * assumed_rate
+        # ここでは average_cost が USD であると仮定
+        if asset.current_price and asset.current_price > 0:
+            # 推定レート
+            assumed_rate = (
+                (asset.current_value / (asset.current_price * asset.quantity))
+                if asset.quantity > 0
+                else Decimal("150")
+            )
+            total_cost_jpy = (purchase_price * asset.quantity * assumed_rate).quantize(
+                Decimal("0.01")
+            )
+        else:
+            total_cost_jpy = (purchase_price * asset.quantity * Decimal("150")).quantize(
+                Decimal("0.01")
+            )
 
     transaction = TransactionData(
         date=purchase_date.strftime("%Y-%m-%d"),
