@@ -34,22 +34,6 @@ function EnhancedPriceChart({
     useState<TransactionData | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
 
-  if (isLoading) {
-    return (
-      <div className="h-64 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500" />
-      </div>
-    );
-  }
-
-  if (priceData.length === 0) {
-    return (
-      <div className="h-64 flex items-center justify-center text-gray-400">
-        この期間の価格データがありません
-      </div>
-    );
-  }
-
   // 終値を使用してチャートを描画
   const values = priceData.map((d) => Number(d.close));
 
@@ -92,33 +76,36 @@ function EnhancedPriceChart({
   ];
 
   // 購入ポイントの座標を計算
-  const getPurchasePointPosition = (transactionDate: string) => {
-    // 日付文字列をDateオブジェクトに変換して比較
-    const targetDate = new Date(transactionDate).getTime();
+  const getPurchasePointPosition = useCallback(
+    (transactionDate: string) => {
+      // 日付文字列をDateオブジェクトに変換して比較
+      const targetDate = new Date(transactionDate).getTime();
 
-    // 最も近い日付のインデックスを探す
-    let closestIndex = -1;
-    let minDiff = Infinity;
+      // 最も近い日付のインデックスを探す
+      let closestIndex = -1;
+      let minDiff = Infinity;
 
-    priceData.forEach((d, idx) => {
-      const currentDate = new Date(d.date).getTime();
-      const diff = Math.abs(currentDate - targetDate);
+      priceData.forEach((d, idx) => {
+        const currentDate = new Date(d.date).getTime();
+        const diff = Math.abs(currentDate - targetDate);
 
-      // 3日以内の誤差なら許容（土日休みなどを考慮）
-      if (diff < minDiff && diff <= 3 * 24 * 60 * 60 * 1000) {
-        minDiff = diff;
-        closestIndex = idx;
-      }
-    });
+        // 3日以内の誤差なら許容（土日休みなどを考慮）
+        if (diff < minDiff && diff <= 3 * 24 * 60 * 60 * 1000) {
+          minDiff = diff;
+          closestIndex = idx;
+        }
+      });
 
-    if (closestIndex === -1) return null;
+      if (closestIndex === -1) return null;
 
-    const x = (closestIndex / (priceData.length - 1 || 1)) * 100;
-    const price = priceData[closestIndex].close;
-    const y = 100 - ((Number(price) - minValue) / range) * 100;
+      const x = (closestIndex / (priceData.length - 1 || 1)) * 100;
+      const price = priceData[closestIndex].close;
+      const y = 100 - ((Number(price) - minValue) / range) * 100;
 
-    return { x, y, price };
-  };
+      return { x, y, price };
+    },
+    [priceData, minValue, range]
+  );
 
   // 平均取得単価のY座標を計算
   const getAverageCostY = () => {
@@ -127,6 +114,42 @@ function EnhancedPriceChart({
   };
 
   const avgCostY = getAverageCostY();
+
+  // DEBUG LOGGING (Moved to avoid hook error)
+  useEffect(() => {
+    console.log("EnhancedPriceChart Debug:", {
+      transactionsCount: transactions.length,
+      priceDataCount: priceData.length,
+      dateRange: {
+        start: priceData[0]?.date,
+        end: priceData[priceData.length - 1]?.date,
+      },
+    });
+    transactions.forEach((t) => {
+      const pos = getPurchasePointPosition(t.date);
+      console.log(`Transaction ${t.date}:`, {
+        quantity: t.quantity,
+        pos,
+        inRange: !!pos,
+      });
+    });
+  }, [transactions, priceData, getPurchasePointPosition]);
+
+  if (isLoading) {
+    return (
+      <div className="h-64 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500" />
+      </div>
+    );
+  }
+
+  if (priceData.length === 0) {
+    return (
+      <div className="h-64 flex items-center justify-center text-gray-400">
+        この期間の価格データがありません
+      </div>
+    );
+  }
 
   return (
     <div className="w-full relative">
@@ -232,34 +255,63 @@ function EnhancedPriceChart({
             />
 
             {/* 購入ポイントマーカー */}
-            {transactions.map((transaction) => {
-              const position = getPurchasePointPosition(transaction.date);
-              if (!position) return null;
+            {(() => {
+              // 描画済みのポイントを管理して重なりを防ぐ
+              const renderedPoints: { x: number; y: number }[] = [];
 
-              return (
-                // biome-ignore lint/a11y/noStaticElementInteractions: tooltip interaction only
-                <circle
-                  key={`${transaction.date}-${transaction.quantity}`}
-                  cx={position.x}
-                  cy={position.y}
-                  r={hoveredTransaction === transaction ? "1.5" : "1"}
-                  fill="#6366f1"
-                  stroke="#fff"
-                  strokeWidth="0.3"
-                  className="cursor-pointer transition-all"
-                  onMouseEnter={(e) => {
-                    setHoveredTransaction(transaction);
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    // ツールチップをマーカーの上に表示（スクロール位置を考慮しないfixed座標を使用）
-                    setTooltipPosition({
-                      x: rect.left + rect.width / 2,
-                      y: rect.top,
-                    });
-                  }}
-                  onMouseLeave={() => setHoveredTransaction(null)}
-                />
-              );
-            })}
+              return transactions.map((transaction) => {
+                const basePosition = getPurchasePointPosition(transaction.date);
+                if (!basePosition) return null;
+
+                let { x, y } = basePosition;
+
+                // 重なりチェックと補正
+                // 既存のポイントと重なる場合、位置をずらして再試行
+                let retry = 0;
+                const threshold = 2.5; // 重なり判定の閾値（%）
+
+                while (retry < 10) {
+                  const collision = renderedPoints.find((p) => {
+                    const dist = Math.sqrt((p.x - x) ** 2 + (p.y - y) ** 2);
+                    return dist < threshold;
+                  });
+
+                  if (!collision) break;
+
+                  // 重なっている場合、上方向に大きくずらし、左右に散らす
+                  y -= 2.5;
+                  // 奇数回目は右、偶数回目は左
+                  x += (retry % 2 === 0 ? 1 : -1) * 1.5;
+                  retry++;
+                }
+
+                renderedPoints.push({ x, y });
+
+                return (
+                  // biome-ignore lint/a11y/noStaticElementInteractions: tooltip interaction only
+                  <circle
+                    key={`${transaction.date}-${transaction.quantity}-${retry}`}
+                    cx={x}
+                    cy={y}
+                    r={hoveredTransaction === transaction ? "2" : "1.5"}
+                    fill="#6366f1"
+                    stroke="#fff"
+                    strokeWidth="0.5"
+                    className="cursor-pointer transition-all hover:r-2"
+                    onMouseEnter={(e) => {
+                      setHoveredTransaction(transaction);
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      // ツールチップをマーカーの上に表示
+                      setTooltipPosition({
+                        x: rect.left + rect.width / 2,
+                        y: rect.top,
+                      });
+                    }}
+                    onMouseLeave={() => setHoveredTransaction(null)}
+                  />
+                );
+              });
+            })()}
           </svg>
 
           {/* ツールチップ */}
@@ -273,7 +325,12 @@ function EnhancedPriceChart({
             >
               <div className="font-semibold mb-1">購入情報</div>
               <div>日付: {hoveredTransaction.date}</div>
-              <div>数量: {hoveredTransaction.quantity}</div>
+              <div>
+                数量:{" "}
+                {Number(hoveredTransaction.quantity) % 1 === 0
+                  ? Math.floor(Number(hoveredTransaction.quantity))
+                  : Number(hoveredTransaction.quantity)}
+              </div>
               <div>
                 単価: {currency === "USD" ? "$" : "¥"}
                 {hoveredTransaction.price.toLocaleString()}
