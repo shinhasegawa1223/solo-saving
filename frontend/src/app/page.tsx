@@ -85,7 +85,7 @@ function DashboardContent() {
   // 全体ローディング状態
   if (isLoading) {
     return (
-      <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+      <main className="max-w-7xl mx-auto px-6 py-8 space-y-6">
         {/* 統計カードスケルトン */}
         <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="h-32 rounded-xl bg-white dark:bg-[#1e293b] animate-pulse" />
@@ -93,11 +93,11 @@ function DashboardContent() {
           <div className="h-32 rounded-xl bg-white dark:bg-[#1e293b] animate-pulse" />
         </section>
         {/* プログレスバースケルトン */}
-        <div className="h-48 rounded-2xl bg-white dark:bg-[#1e293b] animate-pulse" />
+        <div className="h-48 rounded-xl bg-white dark:bg-[#1e293b] animate-pulse" />
         {/* チャートスケルトン */}
-        <div className="h-96 rounded-2xl bg-white dark:bg-[#1e293b] animate-pulse" />
+        <div className="h-96 rounded-xl bg-white dark:bg-[#1e293b] animate-pulse" />
         {/* ポートフォリオスケルトン */}
-        <div className="h-80 rounded-2xl bg-white dark:bg-[#1e293b] animate-pulse" />
+        <div className="h-80 rounded-xl bg-white dark:bg-[#1e293b] animate-pulse" />
       </main>
     );
   }
@@ -115,7 +115,7 @@ function DashboardContent() {
   const { stats, chartData, portfolio, assets, goals } = data;
 
   return (
-    <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+    <main className="max-w-7xl mx-auto px-6 py-8 space-y-6">
       {/* 統計カード */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <StatsCard
@@ -168,7 +168,7 @@ function DashboardContent() {
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-[#f8fafc] dark:bg-[#0f172a] transition-colors duration-300">
+    <div className="min-h-screen bg-[#fafafa] dark:bg-[#171717] transition-colors duration-300">
       <Header />
 
       {/* Suspense境界でuseSearchParamsをラップ */}

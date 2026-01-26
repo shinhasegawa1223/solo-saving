@@ -58,6 +58,9 @@ class Asset(Base):
     current_price: Mapped[Decimal | None] = mapped_column(Numeric(18, 2), nullable=True)
     current_value: Mapped[Decimal | None] = mapped_column(Numeric(18, 2), nullable=True)
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="JPY")
+    total_cost_jpy: Mapped[Decimal] = mapped_column(
+        Numeric(18, 2), nullable=False, default=Decimal("0")
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.now()
     )
@@ -69,6 +72,9 @@ class Asset(Base):
     category: Mapped["AssetCategory"] = relationship("AssetCategory", back_populates="assets")
     histories: Mapped[list["AssetHistory"]] = relationship(
         "AssetHistory", back_populates="asset", cascade="all, delete-orphan"
+    )
+    transactions: Mapped[list["Transaction"]] = relationship(
+        "Transaction", back_populates="asset", cascade="all, delete-orphan"
     )
 
     __table_args__ = (Index("idx_assets_category_id", "category_id"),)
@@ -157,3 +163,42 @@ class SavingsGoal(Base):
 
     def __repr__(self) -> str:
         return f"<SavingsGoal(id={self.id}, label='{self.label}')>"
+
+
+class Transaction(Base):
+    """Asset purchase/sell transaction history."""
+
+    __tablename__ = "transactions"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    asset_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("assets.id", ondelete="CASCADE"), nullable=False
+    )
+    transaction_type: Mapped[str] = mapped_column(String(20), nullable=False)  # "buy", "sell"
+    quantity: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
+    price: Mapped[Decimal] = mapped_column(
+        Numeric(18, 2), nullable=False
+    )  # Unit price in original currency
+    usd_jpy_rate: Mapped[Decimal | None] = mapped_column(Numeric(18, 2), nullable=True)
+    currency: Mapped[str] = mapped_column(String(3), nullable=False, default="JPY")
+    total_cost_jpy: Mapped[Decimal] = mapped_column(Numeric(18, 2), nullable=False)
+    transaction_date: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.now()
+    )
+    note: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.now()
+    )
+
+    # Relationships
+    asset: Mapped["Asset"] = relationship("Asset", back_populates="transactions")
+
+    __table_args__ = (
+        Index("idx_transactions_asset_id", "asset_id"),
+        Index("idx_transactions_date", "transaction_date"),
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"<Transaction(id={self.id}, asset_id={self.asset_id}, type={self.transaction_type})>"
+        )

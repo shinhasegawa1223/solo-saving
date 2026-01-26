@@ -81,9 +81,7 @@ async def get_dashboard_stats(db: AsyncSession = Depends(get_db)):
         # ユーザー要望は「利回り」なので、投資信託や株のパフォーマンス（含み益/投資額）を表示する。
 
         investment_assets = [a for a in all_assets if a.category_id != 4]
-        total_investment = sum(
-            (a.average_cost or Decimal("0")) * a.quantity for a in investment_assets
-        )
+        total_investment = sum((a.total_cost_jpy or Decimal("0")) for a in investment_assets)
         total_current_value = sum((a.current_value or Decimal("0")) for a in investment_assets)
 
         if total_investment > 0:

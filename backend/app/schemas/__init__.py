@@ -38,6 +38,9 @@ from app.schemas.history import (
     AssetHistoryResponse,
 )
 
+# 価格履歴
+from app.schemas.price_history import PriceHistoryData, TransactionData
+
 # スナップショット
 from app.schemas.snapshot import (
     AssetSnapshotBase,
@@ -62,6 +65,9 @@ __all__ = [
     "AssetHistoryCreate",
     "AssetHistoryResponse",
     "AssetHistoryChartData",
+    # 価格履歴
+    "PriceHistoryData",
+    "TransactionData",
     # スナップショット
     "AssetSnapshotBase",
     "AssetSnapshotCreate",

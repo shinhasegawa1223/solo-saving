@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
-from app.models import Asset, AssetHistory, AssetSnapshot
+from app.models import Asset, AssetHistory, AssetSnapshot, Transaction
 from app.schemas.asset import (
     AssetCreate,
     AssetPurchaseRequest,
@@ -24,6 +24,8 @@ from app.schemas.asset import (
     AssetUpdate,
 )
 from app.schemas.history import AssetHistoryChartData
+from app.schemas.price_history import PriceHistoryData, TransactionData
+from app.services import YFinanceService
 
 assets_router = APIRouter(
     prefix="/api/assets",
@@ -166,6 +168,9 @@ async def purchase_asset(
         existing_asset.average_cost = new_avg_cost
         existing_asset.current_price = current_price
         existing_asset.current_value = current_value_jpy
+        existing_asset.total_cost_jpy = (
+            existing_asset.total_cost_jpy or Decimal("0")
+        ) + total_purchase_cost
 
         # 通貨情報は既存のものを維持（または更新？）
         # 米国株カテゴリの場合でも、amount系フィールドが円表記なら currency="JPY" にすべきか？
@@ -174,6 +179,21 @@ async def purchase_asset(
         # 「米国株」であることを示すために USD のままにする（値だけ円換算）運用と仮定
         if purchase_data.currency:
             existing_asset.currency = purchase_data.currency
+
+        # Create Transaction record
+        transaction = Transaction(
+            asset_id=existing_asset.id,
+            transaction_type="buy",
+            quantity=purchase_data.quantity,
+            price=purchase_data.purchase_price,
+            usd_jpy_rate=purchase_data.usd_jpy_rate,
+            currency=purchase_data.currency,
+            total_cost_jpy=current_value_jpy,  # Calculated at purchase time
+            transaction_date=datetime.combine(
+                purchase_data.purchase_date or date.today(), datetime.min.time()
+            ),
+        )
+        db.add(transaction)
 
         await db.commit()
         # カテゴリを含めて再取得
@@ -196,12 +216,31 @@ async def purchase_asset(
             current_price=asset_price,
             # 評価額は常に日本円
             current_value=current_value_jpy,
+            # 取得総額(JPY)
+            total_cost_jpy=total_purchase_cost,
             currency=purchase_data.currency,
             created_at=datetime.combine(purchase_data.purchase_date, datetime.min.time())
             if purchase_data.purchase_date
             else datetime.now(),
         )
         db.add(new_asset)
+        await db.flush()  # to get new_asset.id
+
+        # Create Transaction record
+        transaction = Transaction(
+            asset_id=new_asset.id,
+            transaction_type="buy",
+            quantity=purchase_data.quantity,
+            price=purchase_data.purchase_price,
+            usd_jpy_rate=purchase_data.usd_jpy_rate,
+            currency=purchase_data.currency,
+            total_cost_jpy=current_value_jpy,  # Calculated at purchase time
+            transaction_date=datetime.combine(
+                purchase_data.purchase_date or date.today(), datetime.min.time()
+            ),
+        )
+        db.add(transaction)
+
         await db.commit()
         # カテゴリを含めて再取得
         result = await db.execute(
@@ -638,3 +677,153 @@ async def refresh_asset_prices(db: AsyncSession = Depends(get_db)):
         "updated_count": updated_count,
         "usd_jpy_rate": current_rate,
     }
+
+
+@assets_router.get(
+    "/{asset_id}/price-history",
+    response_model=list[PriceHistoryData],
+    summary="yfinance価格履歴取得",
+    description="yfinanceから指定された資産の全期間価格データを取得します。",
+)
+async def get_asset_price_history(
+    asset_id: UUID,
+    period: str = Query(
+        default="1mo",
+        description="取得期間 (7d, 1mo, 3mo, 1y, max)",
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    yfinanceから資産の価格履歴を取得。
+
+    Args:
+        asset_id: 資産ID（UUID）
+        period: 取得期間（7d, 1mo, 3mo, 1y, max）
+
+    Returns:
+        価格履歴リスト（日付、始値、高値、安値、終値、出来高）
+
+    Raises:
+        404: 資産が見つからない場合
+        400: 価格データの取得に失敗した場合
+    """
+    # 資産の存在確認
+    result = await db.execute(
+        select(Asset).options(selectinload(Asset.category)).where(Asset.id == asset_id)
+    )
+    asset = result.scalar_one_or_none()
+    if not asset:
+        raise HTTPException(status_code=404, detail="資産が見つかりません")
+
+    # ティッカーシンボルがない場合はエラー
+    if not asset.ticker_symbol:
+        raise HTTPException(
+            status_code=400,
+            detail="この資産にはティッカーシンボルが設定されていません",
+        )
+
+    # yfinanceから価格データを取得
+    try:
+        price_history = YFinanceService.get_price_history(
+            ticker_symbol=asset.ticker_symbol,
+            category_id=asset.category_id,
+            period=period,
+        )
+        return price_history
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+@assets_router.get(
+    "/{asset_id}/transactions",
+    response_model=list[TransactionData],
+    summary="購入履歴取得",
+    description="指定された資産の購入履歴を取得します。",
+)
+async def get_asset_transactions(
+    asset_id: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    資産の購入履歴を取得。
+
+    現在の実装では、初回購入日のみを返します。
+    将来的にトランザクションテーブルを追加して、
+    複数回の購入履歴を記録することを推奨します。
+
+    Args:
+        asset_id: 資産ID（UUID）
+
+    Returns:
+        購入履歴リスト
+
+    Raises:
+        404: 資産が見つかりません
+    """
+    # 資産の存在確認
+    result = await db.execute(
+        select(Asset).options(selectinload(Asset.category)).where(Asset.id == asset_id)
+    )
+    asset = result.scalar_one_or_none()
+    if not asset:
+        raise HTTPException(status_code=404, detail="資産が見つかりません")
+
+    # Fetch transactions from DB
+    txn_result = await db.execute(
+        select(Transaction)
+        .where(Transaction.asset_id == asset_id)
+        .order_by(Transaction.transaction_date)
+    )
+    transactions = txn_result.scalars().all()
+
+    if transactions:
+        return [
+            TransactionData(
+                date=t.transaction_date.strftime("%Y-%m-%d"),
+                quantity=t.quantity,
+                price=t.price,
+                usd_jpy_rate=t.usd_jpy_rate,
+                total_cost=t.total_cost_jpy,
+            )
+            for t in transactions
+        ]
+
+    # Fallback for legacy data (no transaction records)
+    # created_atを初回購入日として使用
+    purchase_date = asset.created_at.date() if asset.created_at else date.today()
+
+    # 購入価格は average_cost を使用
+    purchase_price = asset.average_cost or Decimal("0")
+
+    # 合計コスト（円建て）
+    total_cost_jpy = (purchase_price * asset.quantity).quantize(Decimal("0.01"))
+    if asset.currency == "USD":
+        # USD資産の場合、為替レートが必要だが、履歴がないため現在のレートを使用
+        # これは正確ではないが、簡易実装として許容
+        # 注意: current_valueは現在の価格ベースなので、購入時のコストとは異なる可能性があるが
+        # 履歴がない以上、推定するしかない。あるいは average_cost * quantity * assumed_rate
+        # ここでは average_cost が USD であると仮定
+        if asset.current_price and asset.current_price > 0:
+            # 推定レート
+            assumed_rate = (
+                (asset.current_value / (asset.current_price * asset.quantity))
+                if asset.quantity > 0
+                else Decimal("150")
+            )
+            total_cost_jpy = (purchase_price * asset.quantity * assumed_rate).quantize(
+                Decimal("0.01")
+            )
+        else:
+            total_cost_jpy = (purchase_price * asset.quantity * Decimal("150")).quantize(
+                Decimal("0.01")
+            )
+
+    transaction = TransactionData(
+        date=purchase_date.strftime("%Y-%m-%d"),
+        quantity=asset.quantity,
+        price=purchase_price,
+        usd_jpy_rate=None,  # 履歴がないため None
+        total_cost=total_cost_jpy,
+    )
+
+    return [transaction]

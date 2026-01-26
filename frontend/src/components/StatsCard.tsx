@@ -42,11 +42,11 @@ export const StatsCard = ({
     },
     neutral: {
       container:
-        "bg-white dark:bg-[#1e293b] border border-[#e2e8f0] dark:border-[#334155] text-[#1e293b] dark:text-white",
+        "bg-white dark:bg-[#262626] border border-[#e2e8f0] dark:border-[#404040] text-neutral-900 dark:text-white",
       tag: "bg-[#1e3a5f]/10 dark:bg-[#c9a227]/10 text-[#1e3a5f] dark:text-[#c9a227]",
-      subText: "text-[#64748b] dark:text-[#94a3b8]",
+      subText: "text-neutral-500 dark:text-neutral-400",
       trendText: "text-[#c9a227]",
-      trendLabel: "text-[#64748b] dark:text-[#94a3b8]",
+      trendLabel: "text-neutral-500 dark:text-neutral-400",
       decoration: "bg-[#1e3a5f]/5 dark:bg-[#c9a227]/5",
     },
   };
@@ -55,7 +55,7 @@ export const StatsCard = ({
 
   return (
     <div
-      className={`group p-6 rounded-2xl shadow-xl card-hover relative overflow-hidden ${currentStyle.container}`}
+      className={`group p-6 rounded-xl shadow-sm card-hover relative overflow-hidden ${currentStyle.container}`}
     >
       <div
         className={`absolute top-0 right-0 w-32 h-32 rounded-full -translate-y-1/2 translate-x-1/2 ${currentStyle.decoration}`}
@@ -77,7 +77,7 @@ export const StatsCard = ({
             {tag}
           </span>
         </div>
-        <p className="text-4xl font-bold tracking-tight">{value}</p>
+        <p className="text-3xl font-bold tracking-tight">{value}</p>
         <div className="flex items-center gap-2 mt-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
             <span

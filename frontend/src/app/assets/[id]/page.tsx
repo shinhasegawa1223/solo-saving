@@ -3,29 +3,38 @@
 import { ArrowLeft, TrendingDown, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { Footer, Header } from "@/components";
 import { formatCurrency } from "@/config";
 import {
   type Asset,
-  type AssetHistoryData,
   getAsset,
-  getAssetHistory,
+  getAssetPriceHistory,
+  getAssetTransactions,
+  type PriceHistoryData,
   refreshAssets,
+  type TransactionData,
 } from "@/lib/api";
 
-// 簡易版AreaChart（銘柄詳細用）
-function SimpleAreaChart({ data }: { data: AssetHistoryData[] }) {
-  if (data.length === 0) {
-    return (
-      <div className="h-64 flex items-center justify-center text-gray-400">
-        履歴データがありません
-      </div>
-    );
-  }
+function EnhancedPriceChart({
+  priceData,
+  transactions,
+  currency = "JPY",
+  isLoading = false,
+}: {
+  priceData: PriceHistoryData[];
+  transactions: TransactionData[];
+  currency?: string;
+  isLoading?: boolean;
+}) {
+  const [hoveredTransaction, setHoveredTransaction] =
+    useState<TransactionData | null>(null);
+  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
 
-  const values = data.map((d) => Number(d.value));
+  // 終値を使用してチャートを描画
+  const values = priceData.map((d) => Number(d.close));
+
   const maxValue = Math.max(...values);
   const minValue = Math.min(...values);
   const range = maxValue - minValue || 1;
@@ -34,32 +43,94 @@ function SimpleAreaChart({ data }: { data: AssetHistoryData[] }) {
   const yLabels = [];
   for (let i = 0; i <= 4; i++) {
     const value = minValue + (range * (4 - i)) / 4;
-    yLabels.push(Math.round(value));
+    yLabels.push(value);
   }
 
-  // Y軸ラベルのフォーマット（メインチャートと同じ形式）
+  // Y軸ラベルのフォーマット
   const formatYLabel = (value: number): string => {
+    const symbol = currency === "USD" ? "$" : "¥";
+
+    if (currency === "USD") {
+      return `${symbol}${value.toFixed(2)}`;
+    }
+
     if (value >= 10000000) {
-      return `¥${(value / 1000000).toFixed(0)}M`;
+      return `${symbol}${(value / 1000000).toFixed(0)}M`;
     }
     if (value >= 1000000) {
-      return `¥${(value / 1000000).toFixed(1)}M`;
+      return `${symbol}${(value / 1000000).toFixed(1)}M`;
     }
     if (value >= 10000) {
-      return `¥${(value / 10000).toFixed(1)}万`;
+      return `${symbol}${(value / 10000).toFixed(1)}万`;
     }
-    return `¥${value.toLocaleString()}`;
+    return `${symbol}${Math.round(value).toLocaleString()}`;
   };
 
-  // X軸のラベルを生成（最初、中間、最後）
+  // X軸のラベルを生成（5つ: 最初、1/4、中間、3/4、最後）
   const xLabels = [
-    data[0]?.date,
-    data[Math.floor(data.length / 2)]?.date,
-    data[data.length - 1]?.date,
+    priceData[0]?.date,
+    priceData[Math.floor(priceData.length / 4)]?.date,
+    priceData[Math.floor(priceData.length / 2)]?.date,
+    priceData[Math.floor((priceData.length * 3) / 4)]?.date,
+    priceData[priceData.length - 1]?.date,
   ];
 
+  // 購入ポイントの座標を計算
+  const getPurchasePointPosition = useCallback(
+    (transactionDate: string) => {
+      // 日付文字列を YYYY-MM-DD 形式で UTC タイムスタンプに変換して比較
+      const toUtcTime = (dateStr: string) => {
+        const datePart = dateStr.split("T")[0];
+        // YYYY-MM-DD を直接パースすると UTC ミッドナイトになる
+        return new Date(datePart).getTime();
+      };
+
+      const targetTime = toUtcTime(transactionDate);
+
+      // 最も近い日付のインデックスを探す
+      let closestIndex = -1;
+      let minDiff = Infinity;
+
+      priceData.forEach((d, idx) => {
+        const currentTime = toUtcTime(d.date);
+        const diff = Math.abs(currentTime - targetTime);
+
+        // 5日以内の誤差なら許容（土日休み、祝日、データ遅延を考慮して少し広げる）
+        if (diff < minDiff && diff <= 5 * 24 * 60 * 60 * 1000) {
+          minDiff = diff;
+          closestIndex = idx;
+        }
+      });
+
+      if (closestIndex === -1) return null;
+
+      const x = (closestIndex / (priceData.length - 1 || 1)) * 100;
+      const price = priceData[closestIndex].close;
+      const y = 100 - ((Number(price) - minValue) / range) * 100;
+
+      return { x, y, price };
+    },
+    [priceData, minValue, range]
+  );
+
+  if (isLoading) {
+    return (
+      <div className="h-64 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500" />
+      </div>
+    );
+  }
+
+  if (priceData.length === 0) {
+    return (
+      <div className="h-64 flex items-center justify-center text-gray-400">
+        この期間の価格データがありません
+      </div>
+    );
+  }
+
   return (
-    <div className="w-full">
+    <div className="w-full relative">
       {/* Y軸ラベル + チャートエリア */}
       <div className="flex">
         {/* Y軸ラベル */}
@@ -75,7 +146,7 @@ function SimpleAreaChart({ data }: { data: AssetHistoryData[] }) {
         </div>
 
         {/* チャートエリア */}
-        <div className="flex-1" style={{ height: "280px" }}>
+        <div className="flex-1 relative" style={{ height: "280px" }}>
           <svg
             viewBox="0 0 100 100"
             className="w-full h-full"
@@ -110,22 +181,26 @@ function SimpleAreaChart({ data }: { data: AssetHistoryData[] }) {
               />
             ))}
 
-            {/* チャートエリア */}
+            {/* 平均取得単価ライン（削除済み） */}
+
+            {/* チャートエリア(Area) */}
             <path
-              d={`M ${data
+              d={`M ${priceData
                 .map((d, i) => {
-                  const x = (i / (data.length - 1 || 1)) * 100;
-                  const y = 100 - ((Number(d.value) - minValue) / range) * 100;
+                  const x = (i / (priceData.length - 1 || 1)) * 100;
+                  const y = 100 - ((Number(d.close) - minValue) / range) * 100;
                   return `${x},${y}`;
                 })
                 .join(" L ")} L 100,100 L 0,100 Z`}
               fill="url(#areaGradient)"
             />
+
+            {/* チャートエリア(Line) */}
             <path
-              d={`M ${data
+              d={`M ${priceData
                 .map((d, i) => {
-                  const x = (i / (data.length - 1 || 1)) * 100;
-                  const y = 100 - ((Number(d.value) - minValue) / range) * 100;
+                  const x = (i / (priceData.length - 1 || 1)) * 100;
+                  const y = 100 - ((Number(d.close) - minValue) / range) * 100;
                   return `${x},${y}`;
                 })
                 .join(" L ")}`}
@@ -135,6 +210,92 @@ function SimpleAreaChart({ data }: { data: AssetHistoryData[] }) {
               strokeLinecap="round"
             />
           </svg>
+
+          {/* 購入ポイントマーカー (HTML overlay) */}
+          <div className="absolute inset-0 pointer-events-none">
+            {(() => {
+              // 描画済みのポイントを管理して重なりを防ぐ
+              const renderedPoints: { x: number; y: number }[] = [];
+
+              return transactions.map((transaction) => {
+                const basePosition = getPurchasePointPosition(transaction.date);
+                if (!basePosition) return null;
+
+                let { x, y } = basePosition;
+
+                // 重なりチェックと補正
+                let retry = 0;
+                const threshold = 2.5; // 重なり判定の閾値（%）
+
+                while (retry < 10) {
+                  const collision = renderedPoints.find((p) => {
+                    const dist = Math.sqrt((p.x - x) ** 2 + (p.y - y) ** 2);
+                    return dist < threshold;
+                  });
+
+                  if (!collision) break;
+
+                  // 重なっている場合、上方向に大きくずらし、左右に散らす
+                  y -= 2.5;
+                  // 奇数回目は右、偶数回目は左
+                  x += (retry % 2 === 0 ? 1 : -1) * 1.5;
+                  retry++;
+                }
+
+                renderedPoints.push({ x, y });
+
+                return (
+                  // biome-ignore lint/a11y/noStaticElementInteractions: tooltip interaction only
+                  <div
+                    key={`${transaction.date}-${transaction.quantity}-${retry}`}
+                    className={`absolute rounded-full border border-white cursor-pointer transition-all pointer-events-auto shadow-sm ${
+                      hoveredTransaction === transaction ? "w-5 h-5" : "w-3 h-3"
+                    }`}
+                    style={{
+                      left: `${x}%`,
+                      top: `${y}%`,
+                      backgroundColor: "#f59e0b",
+                      transform: "translate(-50%, -50%)",
+                    }}
+                    onMouseEnter={(e) => {
+                      setHoveredTransaction(transaction);
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      setTooltipPosition({
+                        x: rect.left + rect.width / 2,
+                        y: rect.top,
+                      });
+                    }}
+                    onMouseLeave={() => setHoveredTransaction(null)}
+                  />
+                );
+              });
+            })()}
+          </div>
+
+          {/* ツールチップ */}
+          {hoveredTransaction && (
+            <div
+              className="fixed z-50 bg-gray-900 text-white text-xs rounded px-3 py-2 shadow-lg pointer-events-none transform -translate-x-1/2 -translate-y-full mb-2"
+              style={{
+                left: `${tooltipPosition.x}px`,
+                top: `${tooltipPosition.y - 8}px`,
+              }}
+            >
+              <div className="font-semibold mb-1">購入情報</div>
+              <div>日付: {hoveredTransaction.date}</div>
+              <div>
+                数量:{" "}
+                {Number(hoveredTransaction.quantity) % 1 === 0
+                  ? Math.floor(Number(hoveredTransaction.quantity))
+                  : Number(hoveredTransaction.quantity)}
+              </div>
+              <div>
+                単価: {currency === "USD" ? "$" : "¥"}
+                {hoveredTransaction.price.toLocaleString()}
+              </div>
+              <div>合計: ¥{hoveredTransaction.total_cost.toLocaleString()}</div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -143,42 +304,76 @@ function SimpleAreaChart({ data }: { data: AssetHistoryData[] }) {
         <span>{xLabels[0]}</span>
         <span>{xLabels[1]}</span>
         <span>{xLabels[2]}</span>
+        <span>{xLabels[3]}</span>
+        <span>{xLabels[4]}</span>
       </div>
     </div>
   );
 }
+
+// 期間の型定義
+type TimePeriod = "7D" | "1M" | "3M" | "1Y";
 
 export default function AssetDetailPage() {
   const params = useParams();
   const assetId = params.id as string;
 
   const [asset, setAsset] = useState<Asset | null>(null);
-  const [history, setHistory] = useState<AssetHistoryData[]>([]);
+  const [priceHistory, setPriceHistory] = useState<PriceHistoryData[]>([]);
+  const [transactions, setTransactions] = useState<TransactionData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isChartLoading, setIsChartLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>("1M");
 
+  // 期間をyfinance形式に変換
+  const getPeriodString = useCallback((period: TimePeriod): string => {
+    const periodMap: Record<TimePeriod, string> = {
+      "7D": "7d",
+      "1M": "1mo",
+      "3M": "3mo",
+      "1Y": "1y",
+    };
+    return periodMap[period];
+  }, []);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: asset is excluded to avoid infinite loop
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // 1. まず既存データを即時表示
-        const [initialAsset, initialHistory] = await Promise.all([
-          getAsset(assetId),
-          getAssetHistory(assetId, 30),
-        ]);
+        const periodString = getPeriodString(timePeriod);
+
+        // 初回ロード時のみ全体のローディング表示
+        if (!asset) {
+          setIsLoading(true);
+        } else {
+          // 期間切り替え時はチャートのみローディング
+          setIsChartLoading(true);
+        }
+
+        // 1. 資産情報、価格履歴、トランザクション履歴を並列取得
+        const [initialAsset, initialPriceHistory, initialTransactions] =
+          await Promise.all([
+            getAsset(assetId),
+            getAssetPriceHistory(assetId, periodString),
+            getAssetTransactions(assetId),
+          ]);
         setAsset(initialAsset);
-        setHistory(initialHistory);
+        setPriceHistory(initialPriceHistory);
+        setTransactions(initialTransactions);
         setIsLoading(false);
+        setIsChartLoading(false);
 
         // 2. バックグラウンドで市場価格更新
         try {
           await refreshAssets();
           // 3. 更新完了後に再取得
-          const [updatedAsset, updatedHistory] = await Promise.all([
+          const [updatedAsset, updatedPriceHistory] = await Promise.all([
             getAsset(assetId),
-            getAssetHistory(assetId, 30),
+            getAssetPriceHistory(assetId, periodString),
           ]);
           setAsset(updatedAsset);
-          setHistory(updatedHistory);
+          setPriceHistory(updatedPriceHistory);
         } catch (e) {
           console.warn("Market update failed:", e);
         }
@@ -186,11 +381,12 @@ export default function AssetDetailPage() {
         console.error("Failed to fetch asset:", err);
         setError("資産情報の取得に失敗しました");
         setIsLoading(false);
+        setIsChartLoading(false);
       }
     };
 
     fetchData();
-  }, [assetId]);
+  }, [assetId, timePeriod, getPeriodString]);
 
   // 損益計算
   const calculateProfitLoss = () => {
@@ -216,7 +412,7 @@ export default function AssetDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#f8fafc] dark:bg-[#0f172a]">
+      <div className="min-h-screen bg-[#fafafa] dark:bg-[#171717]">
         <Header />
         <main className="max-w-4xl mx-auto px-6 py-8">
           <div className="animate-pulse space-y-6">
@@ -232,7 +428,7 @@ export default function AssetDetailPage() {
 
   if (error || !asset) {
     return (
-      <div className="min-h-screen bg-[#f8fafc] dark:bg-[#0f172a]">
+      <div className="min-h-screen bg-[#fafafa] dark:bg-[#171717]">
         <Header />
         <main className="max-w-4xl mx-auto px-6 py-8">
           <Link
@@ -252,7 +448,7 @@ export default function AssetDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] dark:bg-[#0f172a] transition-colors duration-300">
+    <div className="min-h-screen bg-[#fafafa] dark:bg-[#171717] transition-colors duration-300">
       <Header />
 
       <main className="max-w-7xl mx-auto px-6 py-8 space-y-6">
@@ -333,10 +529,39 @@ export default function AssetDetailPage() {
 
         {/* 価格推移チャート */}
         <div className="bg-white dark:bg-[#1e293b] rounded-2xl p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            価格推移（過去30日）
-          </h2>
-          <SimpleAreaChart data={history} />
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+              価格推移
+              {timePeriod === "7D" && "（過去7日）"}
+              {timePeriod === "1M" && "（過去30日）"}
+              {timePeriod === "3M" && "（過去3ヶ月）"}
+              {timePeriod === "1Y" && "（過去1年）"}
+            </h2>
+
+            {/* 期間選択ボタン */}
+            <div className="flex gap-2">
+              {(["7D", "1M", "3M", "1Y"] as TimePeriod[]).map((period) => (
+                <button
+                  key={period}
+                  type="button"
+                  onClick={() => setTimePeriod(period)}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-all ${
+                    timePeriod === period
+                      ? "bg-indigo-500 text-white shadow-sm"
+                      : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                  }`}
+                >
+                  {period}
+                </button>
+              ))}
+            </div>
+          </div>
+          <EnhancedPriceChart
+            priceData={priceHistory}
+            transactions={transactions}
+            currency={asset?.currency}
+            isLoading={isChartLoading}
+          />
         </div>
 
         {/* 詳細情報 */}

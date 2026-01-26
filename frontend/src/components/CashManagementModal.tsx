@@ -1,26 +1,48 @@
 "use client";
 
 import { ArrowDownCircle, ArrowUpCircle, X } from "lucide-react";
-import { useState } from "react";
-import { depositCash, withdrawCash } from "@/lib/api";
+import { useCallback, useEffect, useState } from "react";
+import { depositCash, getCashBalance, withdrawCash } from "@/lib/api";
 
 interface CashManagementModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  currentBalance?: number;
+  currentBalance?: number; // 後方互換性のために残すが、実際の現金残高はAPIから取得
 }
 
 export const CashManagementModal = ({
   isOpen,
   onClose,
   onSuccess,
-  currentBalance = 0,
 }: CashManagementModalProps) => {
   const [activeTab, setActiveTab] = useState<"deposit" | "withdraw">("deposit");
   const [amount, setAmount] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [cashBalance, setCashBalance] = useState<number>(0);
+  const [isLoadingBalance, setIsLoadingBalance] = useState(false);
+
+  // 現金残高をAPIから取得
+  const fetchCashBalance = useCallback(async () => {
+    setIsLoadingBalance(true);
+    try {
+      const data = await getCashBalance();
+      setCashBalance(data.balance);
+    } catch (err) {
+      console.error("Failed to fetch cash balance:", err);
+      setCashBalance(0);
+    } finally {
+      setIsLoadingBalance(false);
+    }
+  }, []);
+
+  // モーダルが開いたときに現金残高を取得
+  useEffect(() => {
+    if (isOpen) {
+      fetchCashBalance();
+    }
+  }, [isOpen, fetchCashBalance]);
 
   if (!isOpen) return null;
 
@@ -36,7 +58,7 @@ export const CashManagementModal = ({
       return;
     }
 
-    if (activeTab === "withdraw" && numericAmount > currentBalance) {
+    if (activeTab === "withdraw" && numericAmount > cashBalance) {
       setError("残高不足です");
       setIsSubmitting(false);
       return;
@@ -112,7 +134,11 @@ export const CashManagementModal = ({
                 現在の現金残高
               </p>
               <p className="text-xl font-bold text-[#1e293b] dark:text-white">
-                ¥{Math.floor(currentBalance).toLocaleString()}
+                {isLoadingBalance ? (
+                  <span className="animate-pulse">読み込み中...</span>
+                ) : (
+                  `¥${Math.floor(cashBalance).toLocaleString()}`
+                )}
               </p>
             </div>
 
