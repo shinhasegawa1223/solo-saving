@@ -3,7 +3,7 @@
 import { ArrowLeft, TrendingDown, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { Footer, Header } from "@/components";
 import { formatCurrency } from "@/config";
@@ -20,13 +20,11 @@ import {
 function EnhancedPriceChart({
   priceData,
   transactions,
-  averageCost,
   currency = "JPY",
   isLoading = false,
 }: {
   priceData: PriceHistoryData[];
   transactions: TransactionData[];
-  averageCost: number | null;
   currency?: string;
   isLoading?: boolean;
 }) {
@@ -68,10 +66,12 @@ function EnhancedPriceChart({
     return `${symbol}${Math.round(value).toLocaleString()}`;
   };
 
-  // X軸のラベルを生成（最初、中間、最後）
+  // X軸のラベルを生成（5つ: 最初、1/4、中間、3/4、最後）
   const xLabels = [
     priceData[0]?.date,
+    priceData[Math.floor(priceData.length / 4)]?.date,
     priceData[Math.floor(priceData.length / 2)]?.date,
+    priceData[Math.floor((priceData.length * 3) / 4)]?.date,
     priceData[priceData.length - 1]?.date,
   ];
 
@@ -304,6 +304,8 @@ function EnhancedPriceChart({
         <span>{xLabels[0]}</span>
         <span>{xLabels[1]}</span>
         <span>{xLabels[2]}</span>
+        <span>{xLabels[3]}</span>
+        <span>{xLabels[4]}</span>
       </div>
     </div>
   );
@@ -557,7 +559,6 @@ export default function AssetDetailPage() {
           <EnhancedPriceChart
             priceData={priceHistory}
             transactions={transactions}
-            averageCost={Number(asset.average_cost || 0)}
             currency={asset?.currency}
             isLoading={isChartLoading}
           />
