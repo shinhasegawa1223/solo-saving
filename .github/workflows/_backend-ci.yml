@@ -17,11 +17,11 @@ jobs:
     steps:
       # リポジトリのチェックアウト
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       # uvのインストール（高速なPythonパッケージマネージャー）
       - name: Install uv
-        uses: astral-sh/setup-uv@v2
+        uses: astral-sh/setup-uv@797cf5c0a210b8b257f62fe1fbf9a46b4fc201bf # v2
         with:
           enable-cache: true
 
